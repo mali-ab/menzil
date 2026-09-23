@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS refresh_tokens;
+DROP TABLE IF EXISTS courier_location_history;
+DROP TABLE IF EXISTS courier_location_current;
+DROP TABLE IF EXISTS order_status_history;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS courier_profiles;
+DROP TABLE IF EXISTS client_profiles;
+DROP TABLE IF EXISTS user_roles;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS order_statuses;
+DROP TABLE IF EXISTS transport_types;
+DROP TABLE IF EXISTS roles;
+DROP FUNCTION IF EXISTS set_updated_at();
