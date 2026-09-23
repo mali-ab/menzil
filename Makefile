@@ -1,9 +1,9 @@
 .PHONY: api-db api-seed api-run api-fmt api-test mobile-init mobile-linux-init mobile-web-init mobile-run mobile-run-android mobile-run-web
 
 api-db:
-	cd api && docker compose up -d
+	cd api && docker compose up -d --wait
 
-api-seed:
+api-seed: api-db
 	cd api && docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U menzil -d menzil < seeds/development.sql
 
 api-run:

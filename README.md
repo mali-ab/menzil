@@ -53,7 +53,7 @@ make api-seed
 make api-run
 ```
 
-`api/migrations/` faýllary diňe täze PostgreSQL volume döredilende konteýner tarapyndan awtomatik ýerine ýetirilýär. Öndürilişde aýratyn migration guralyny ulanmak maslahat berilýär.
+`api/migrations/*.up.sql` faýllary diňe täze PostgreSQL volume döredilende konteýner tarapyndan awtomatik ýerine ýetirilýär; `.down.sql` faýllary hiç wagt init wagtynda işlemeýär. Öndürilişde aýratyn migration guralyny ulanmak maslahat berilýär.
 
 Öňden işleýän lokal baza üçin täze funksiýalaryň migration-yny aýratyn işlediň:
 
@@ -69,6 +69,8 @@ Migration-lar ýerine ýetirilenden soň lokal demo hasaplaryny we Aşgabat boý
 ```sh
 make api-seed
 ```
+
+`make api-seed` PostgreSQL healthcheck-i üstünlikli tamamlanýança garaşýar. Konteýneriň ilkinji işe goýberilişinde PostGIS migration-lary sebäpli bu birnäçe sekunt alyp biler.
 
 Soňkyra şu hasaplar bilen girip bolýar:
 
