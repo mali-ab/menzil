@@ -2,9 +2,9 @@ services:
   postgres:
     image: postgis/postgis:16-3.4
     environment:
-      POSTGRES_DB: menzil
-      POSTGRES_USER: menzil
-      POSTGRES_PASSWORD: menzil
+      POSTGRES_DB: ${POSTGRES_DB:-menzil}
+      POSTGRES_USER: ${POSTGRES_USER:-menzil}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-menzil}
     ports:
       - "5432:5432"
     healthcheck:

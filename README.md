@@ -18,7 +18,7 @@ menzil/
 
 ## Gerekli gurallar
 
-- Go 1.23 ýa-da täze;
+- Go 1.25 ýa-da täze;
 - Flutter SDK we Android Studio / Xcode;
 - Docker Desktop ýa-da Docker Engine (PostgreSQL üçin).
 
@@ -53,7 +53,15 @@ make api-seed
 make api-run
 ```
 
-`make api-run` we `make api-test` ilki `go mod tidy` işledip, `api/go.sum` dependency hash faýlyny awtomatik döredýär. Ony git commit-e goşuň.
+`make api-run` `api/.env` bar bolsa ony awtomatik ýükleýär. `make api-run` we `make api-test` ilki `go mod tidy` işledip, `api/go.sum` dependency hash faýlyny awtomatik döredýär. Ony git commit-e goşuň.
+
+PostgreSQL paroly diňe volume ilkinji gezek döredilende bellenýär. Öňki lokal volume başga parol bilen döredilen bolsa we standart `menzil` parolyna dolanmak isleseňiz, maglumaty pozmazdan şuny işlediň:
+
+```sh
+make api-db-sync-default-password
+```
+
+Öz parolyňyzy ulanmak üçin `api/.env` faýlynda `POSTGRES_PASSWORD` we `DATABASE_URL`-daky paroly birmeňzeş ediň.
 
 `api/migrations/*.up.sql` faýllary diňe täze PostgreSQL volume döredilende konteýner tarapyndan awtomatik ýerine ýetirilýär; `.down.sql` faýllary hiç wagt init wagtynda işlemeýär. Öndürilişde aýratyn migration guralyny ulanmak maslahat berilýär.
 

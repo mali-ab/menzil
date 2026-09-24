@@ -1,7 +1,10 @@
-.PHONY: api-db api-seed api-deps api-run api-fmt api-test mobile-init mobile-linux-init mobile-web-init mobile-run mobile-run-android mobile-run-web
+.PHONY: api-db api-db-sync-default-password api-seed api-deps api-run api-fmt api-test mobile-init mobile-linux-init mobile-web-init mobile-run mobile-run-android mobile-run-web
 
 api-db:
 	cd api && docker compose up -d --wait
+
+api-db-sync-default-password: api-db
+	cd api && docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U menzil -d postgres -c "ALTER ROLE menzil WITH LOGIN PASSWORD 'menzil';"
 
 api-seed: api-db
 	cd api && docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U menzil -d menzil < seeds/development.sql
@@ -10,7 +13,7 @@ api-deps:
 	cd api && go mod tidy
 
 api-run: api-deps
-	cd api && go run ./cmd/api
+	cd api && if [ -f .env ]; then set -a; . ./.env; set +a; fi; go run ./cmd/api
 
 api-fmt:
 	cd api && gofmt -w $$(find . -name '*.go' -not -path './vendor/*')
