@@ -1,4 +1,4 @@
-.PHONY: api-db api-seed api-run api-fmt api-test mobile-init mobile-linux-init mobile-web-init mobile-run mobile-run-android mobile-run-web
+.PHONY: api-db api-seed api-deps api-run api-fmt api-test mobile-init mobile-linux-init mobile-web-init mobile-run mobile-run-android mobile-run-web
 
 api-db:
 	cd api && docker compose up -d --wait
@@ -6,13 +6,16 @@ api-db:
 api-seed: api-db
 	cd api && docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U menzil -d menzil < seeds/development.sql
 
-api-run:
+api-deps:
+	cd api && go mod tidy
+
+api-run: api-deps
 	cd api && go run ./cmd/api
 
 api-fmt:
 	cd api && gofmt -w $$(find . -name '*.go' -not -path './vendor/*')
 
-api-test:
+api-test: api-deps
 	cd api && go test ./...
 
 mobile-init:

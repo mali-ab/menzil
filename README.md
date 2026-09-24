@@ -53,6 +53,8 @@ make api-seed
 make api-run
 ```
 
+`make api-run` we `make api-test` ilki `go mod tidy` işledip, `api/go.sum` dependency hash faýlyny awtomatik döredýär. Ony git commit-e goşuň.
+
 `api/migrations/*.up.sql` faýllary diňe täze PostgreSQL volume döredilende konteýner tarapyndan awtomatik ýerine ýetirilýär; `.down.sql` faýllary hiç wagt init wagtynda işlemeýär. Öndürilişde aýratyn migration guralyny ulanmak maslahat berilýär.
 
 Öňden işleýän lokal baza üçin täze funksiýalaryň migration-yny aýratyn işlediň:
