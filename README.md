@@ -90,7 +90,7 @@ Soňkyra şu hasaplar bilen girip bolýar:
 | Kurýer | `+99360000002` | `password` | Awtoulag |
 | Kurýer | `+99360000003` | `password` | Skuter |
 
-Seed diňe development üçin niýetlenendir; ol `api/seeds/development.sql` faýlynda ýerleşýär we Docker başlananda awtomatik işlemeýär. Öň seed işledilen bolsa, demo parollaryny täzelemek üçin `make api-seed` komandany ýene bir gezek işlediň.
+Seed diňe development üçin niýetlenendir; ol `api/seeds/development.sql` faýlynda ýerleşýär we Docker başlananda awtomatik işlemeýär. Ol üç ulanyjyny, iki sargydy, status taryhyny, escrow/proof, kurýer lokasiýasyny, çat/jaň sessiýasyny, bonus we çaýpuly döredýär. Öň seed işledilen bolsa, demo maglumatlaryny täzelemek üçin `make api-seed` komandany ýene bir gezek işlediň.
 
 ## Flutter gurmak we işletmek
 

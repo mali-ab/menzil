@@ -36,10 +36,23 @@ class _CourierHomePageState extends State<CourierHomePage> {
   Future<void> _availability(bool value) async {
     try {
       await widget.api.setAvailability(widget.session.token!, value);
-      if (value) { await _tracking.start(widget.session.token!); }
-      else { await _tracking.stop(); }
       if (mounted) setState(() => _available = value);
-      if (value) await _load();
+      if (!value) {
+        await _tracking.stop();
+        return;
+      }
+      await _load();
+      try {
+        await _tracking.start(widget.session.token!);
+      } catch (_) {
+        // Linux desktop, browser ýa-da rugsady ýatyrylan enjam GPS bermezligi
+        // mümkin. Kurýer şonda-da sargytlary görüp/kabul edip bilýär.
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Soňkyra çykdyňyz, emma geolokasiýa işlemeýär. GPS rugsadyny barlaň.'),
+          ));
+        }
+      }
     } catch (error) { if (mounted) showError(context, error); }
   }
 
