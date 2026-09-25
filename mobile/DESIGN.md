@@ -36,7 +36,7 @@ Giriş / hasap açmak
 2. Kurýerde ilkinji element “Elýeterli” açarydyr. GPS diňe kurýer setirde bolanda işledilýär.
 3. Sargyt kartasynda bahasy, agramy we ugur iň öňde: kurýer gysga wagtda karar berip bilýär.
 4. Kartanyň içinde ýaşyl/indigo nokatly dik ugur alyş we eltiş nokatlaryny tekstden has tiz okalýan edýär.
-5. Tracking ekrany häzir karta SDK-syz wizual placeholder ulanýar. Önümçilikde ony Google Maps, Mapbox ýa-da OpenStreetMap provider-i bilen çalşmak gerek.
+5. Kurýeriň “Aktiwler” bölüminde OpenStreetMap programma içinde görünýär: ýaşyl marker alyş, indigo marker eltiş nokadyny görkezýär. Daşarky browser-e geçmek talap edilmeýär.
 
 ## Giňeldilen funksiýalaryň UI akymy
 

@@ -43,8 +43,8 @@ func (s *Service) Create(ctx context.Context, clientID uuid.UUID, req CreateRequ
 
 func (s *Service) Available(ctx context.Context, courierID uuid.UUID) ([]AvailableOrder, error) {
 	const q = `
-		SELECT o.id, o.public_number, o.title, o.weight_kg, o.required_transport_code,
-		       o.pickup_address, o.delivery_address,
+		SELECT o.id, o.public_number, o.title, o.weight_kg, o.required_transport_code, o.status_code,
+		       o.pickup_address, ST_Y(o.pickup_location::geometry), ST_X(o.pickup_location::geometry), o.delivery_address,
 		       ST_Y(o.delivery_location::geometry), ST_X(o.delivery_location::geometry),
 		       o.price_amount
 		FROM orders o JOIN courier_profiles cp ON cp.user_id = $1
@@ -58,7 +58,35 @@ func (s *Service) Available(ctx context.Context, courierID uuid.UUID) ([]Availab
 	result := make([]AvailableOrder, 0)
 	for rows.Next() {
 		var row AvailableOrder
-		if err := rows.Scan(&row.ID, &row.PublicNumber, &row.Title, &row.WeightKg, &row.RequiredTransportCode, &row.PickupAddress, &row.DeliveryAddress, &row.DeliveryLatitude, &row.DeliveryLongitude, &row.PriceAmount); err != nil { return nil, err }
+		if err := rows.Scan(&row.ID, &row.PublicNumber, &row.Title, &row.WeightKg, &row.RequiredTransportCode, &row.Status, &row.PickupAddress, &row.PickupLatitude, &row.PickupLongitude, &row.DeliveryAddress, &row.DeliveryLatitude, &row.DeliveryLongitude, &row.PriceAmount); err != nil { return nil, err }
+		result = append(result, row)
+	}
+	return result, rows.Err()
+}
+
+func (s *Service) Active(ctx context.Context, courierID uuid.UUID) ([]AvailableOrder, error) {
+	const q = `
+		SELECT o.id, o.public_number, o.title, o.weight_kg, o.required_transport_code, o.status_code,
+		       o.pickup_address, ST_Y(o.pickup_location::geometry), ST_X(o.pickup_location::geometry), o.delivery_address,
+		       ST_Y(o.delivery_location::geometry), ST_X(o.delivery_location::geometry), o.price_amount
+		FROM orders o
+		WHERE o.courier_id = $1 AND o.status_code IN ('accepted', 'to_pickup', 'delivering')
+		ORDER BY o.accepted_at ASC`
+	return scanOrders(ctx, s.db, q, courierID)
+}
+
+type rowQuerier interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+}
+
+func scanOrders(ctx context.Context, db rowQuerier, query string, args ...any) ([]AvailableOrder, error) {
+	rows, err := db.Query(ctx, query, args...)
+	if err != nil { return nil, err }
+	defer rows.Close()
+	result := make([]AvailableOrder, 0)
+	for rows.Next() {
+		var row AvailableOrder
+		if err := rows.Scan(&row.ID, &row.PublicNumber, &row.Title, &row.WeightKg, &row.RequiredTransportCode, &row.Status, &row.PickupAddress, &row.PickupLatitude, &row.PickupLongitude, &row.DeliveryAddress, &row.DeliveryLatitude, &row.DeliveryLongitude, &row.PriceAmount); err != nil { return nil, err }
 		result = append(result, row)
 	}
 	return result, rows.Err()

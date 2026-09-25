@@ -50,11 +50,17 @@ class ApiClient {
 
   Future<List<OrderSummary>> availableOrders(String token) async {
     final json = await _request('GET', '/courier/orders/available', token: token);
-    return (json['items'] as List<dynamic>)
-        .cast<Map<String, dynamic>>()
-        .map(OrderSummary.fromJson)
-        .toList();
+    return _ordersFrom(json);
   }
+
+  Future<List<OrderSummary>> activeOrders(String token) async =>
+      _ordersFrom(await _request('GET', '/courier/orders/active', token: token));
+
+  List<OrderSummary> _ordersFrom(Map<String, dynamic> json) =>
+      (json['items'] as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(OrderSummary.fromJson)
+          .toList();
 
   Future<void> acceptOrder(String token, String id) =>
       _request('POST', '/courier/orders/$id/accept', token: token);
@@ -112,7 +118,10 @@ class OrderSummary {
     required this.number,
     required this.title,
     required this.weightKg,
+    required this.status,
     required this.pickupAddress,
+    required this.pickupLatitude,
+    required this.pickupLongitude,
     required this.deliveryAddress,
     required this.deliveryLatitude,
     required this.deliveryLongitude,
@@ -124,7 +133,10 @@ class OrderSummary {
         number: json['public_number'] as int,
         title: json['title'] as String,
         weightKg: (json['weight_kg'] as num).toDouble(),
+        status: json['status'] as String,
         pickupAddress: json['pickup_address'] as String,
+        pickupLatitude: (json['pickup_latitude'] as num).toDouble(),
+        pickupLongitude: (json['pickup_longitude'] as num).toDouble(),
         deliveryAddress: json['delivery_address'] as String,
         deliveryLatitude: (json['delivery_latitude'] as num).toDouble(),
         deliveryLongitude: (json['delivery_longitude'] as num).toDouble(),
@@ -135,7 +147,10 @@ class OrderSummary {
   final int number;
   final String title;
   final double weightKg;
+  final String status;
   final String pickupAddress;
+  final double pickupLatitude;
+  final double pickupLongitude;
   final String deliveryAddress;
   final double deliveryLatitude;
   final double deliveryLongitude;

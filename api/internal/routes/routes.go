@@ -32,6 +32,7 @@ func Register(router *gin.Engine, db *pgxpool.Pool, cfg config.Config) {
 	courier.Use(middleware.RequireRole("courier"))
 	courier.PUT("/availability", orderHandler.SetAvailability)
 	courier.GET("/orders/available", orderHandler.Available)
+	courier.GET("/orders/active", orderHandler.Active)
 	courier.POST("/orders/:id/accept", orderHandler.Accept)
 	courier.POST("/orders/:id/status", orderHandler.ChangeStatus)
 	courier.GET("/ws/location", trackingHandler.CourierSocket)

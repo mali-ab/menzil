@@ -143,6 +143,7 @@ make mobile-run-web
 | POST | `/v1/auth/login` | açyk | Access token almak |
 | POST | `/v1/orders` | client | Sargyt döretmek |
 | GET | `/v1/courier/orders/available` | courier | Ulagyna laýyk sargytlar |
+| GET | `/v1/courier/orders/active` | courier | Kabul edilen aktiw sargytlar |
 | PUT | `/v1/courier/availability` | courier | Elýeterlilik ýagdaýyny üýtgetmek |
 | POST | `/v1/courier/orders/:id/accept` | courier | Sargydy kabul etmek |
 | POST | `/v1/courier/orders/:id/status` | courier | Sargyt ýagdaýyny üýtgetmek |
@@ -165,5 +166,6 @@ Mobil dizaýn ýörelgeleri üçin [mobile/DESIGN.md](mobile/DESIGN.md) faýlyna
 - Telefon belgilerini açmazdan içki çat we VoIP call-room modeli;
 - Bonus, çaýpuly we QR töleg reference modeli;
 - Kurýer kartasyndan OpenStreetMap-a geçýän navigasiýa düwmesi.
+- Kurýeriň “Aktiwler” bölüminde programma içindäki OpenStreetMap kartasy we sargyt status hereketleri.
 
 Giňeldilen API maglumat modeli we önümçilik düzgünleri [api/FEATURES.md](api/FEATURES.md) faýlynda düşündirilýär.

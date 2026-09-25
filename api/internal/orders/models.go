@@ -29,7 +29,10 @@ type AvailableOrder struct {
 	Title                 string    `json:"title"`
 	WeightKg              float64   `json:"weight_kg"`
 	RequiredTransportCode string    `json:"required_transport"`
+	Status                string    `json:"status"`
 	PickupAddress         string    `json:"pickup_address"`
+	PickupLatitude        float64   `json:"pickup_latitude"`
+	PickupLongitude       float64   `json:"pickup_longitude"`
 	DeliveryAddress       string    `json:"delivery_address"`
 	DeliveryLatitude      float64   `json:"delivery_latitude"`
 	DeliveryLongitude     float64   `json:"delivery_longitude"`

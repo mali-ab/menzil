@@ -37,6 +37,15 @@ func (h *Handler) Available(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"items": orders})
 }
 
+func (h *Handler) Active(c *gin.Context) {
+	orders, err := h.service.Active(c.Request.Context(), middleware.Current(c).UserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Aktiw sargytlar alynmady"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"items": orders})
+}
+
 type availabilityRequest struct {
 	IsAvailable bool `json:"is_available"`
 }
