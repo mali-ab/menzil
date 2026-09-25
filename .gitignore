@@ -1,7 +1,11 @@
 # Local secrets and environment-specific configuration
-api/.env
-api/.env.*
-!api/.env.example
+# Keep only explicitly named templates in version control.
+.env
+.env*
+**/.env
+**/.env*
+!.env.example
+!**/.env.example
 
 # Local database client/session files
 .dbclient/
