@@ -37,10 +37,14 @@ Android emulýatorynda `10.0.2.2`, iOS simulýatorynda adatça `localhost` ulany
 Android/iOS enjamy bolmadyk development kompýuterinde Linux desktop build-i ulanyp bolýar:
 
 ```sh
+sudo apt update
+sudo apt install -y libsecret-1-dev libsecret-1-0
 flutter create --platforms=linux .
 flutter pub get
 flutter run -d linux --dart-define=API_BASE_URL=http://localhost:8080
 ```
+
+`flutter_secure_storage` Linux-da tokenleri şifrlemek üçin `libsecret` ulanýar; `libsecret-1-dev` build wagtynda gerek. Runtime-da GNOME Keyring, KWallet ýa-da başga Secret Service provider hem elýeterli bolmaly.
 
 ## Chrome/Web arkaly synag
 

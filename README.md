@@ -133,7 +133,7 @@ make mobile-web-init
 make mobile-run-web
 ```
 
-`mobile-run` Linux desktop-a bilkastlaýyn `http://localhost:8080` bilen birikýär. Android emulýatory üçin `mobile-run-android` ulanyň, sebäbi onuň host kompýuter salgysy `10.0.2.2` bolýar. Chrome lokal development-de `localhost` API-a birikýär; deployment-de HTTPS/WSS we anyk CORS origin allowlist-i hökmanydyr.
+`mobile-run` Linux desktop-a bilkastlaýyn `http://localhost:8080` bilen birikýär. Android emulýatory üçin `mobile-run-android` ulanyň, sebäbi onuň host kompýuter salgysy `10.0.2.2` bolýar. Chrome lokal development-de `localhost` API-a birikýär; deployment-de HTTPS/WSS we anyk CORS origin allowlist-i hökmanydyr. Linux build-i üçin bir gezek `sudo apt install -y libsecret-1-dev libsecret-1-0` gerek bolýar; bu `flutter_secure_storage` paketiniň native garaşlylygydyr.
 
 ## API endpoint-lary
 

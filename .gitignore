@@ -1,0 +1,11 @@
+# Local secrets and environment-specific configuration
+api/.env
+api/.env.*
+!api/.env.example
+
+# Local database client/session files
+.dbclient/
+
+# OS/editor artifacts
+.DS_Store
+*.swp
