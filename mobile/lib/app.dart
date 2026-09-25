@@ -21,6 +21,8 @@ class MenzilApp extends StatelessWidget {
         title: 'Menzil',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: ThemeMode.system,
         home: switch (session.state) {
           SessionState.loading => const _LoadingPage(),
           SessionState.unauthenticated => AuthPage(session: session),

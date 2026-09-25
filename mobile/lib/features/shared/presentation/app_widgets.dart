@@ -14,7 +14,7 @@ class AppGradientHeader extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
           gradient: const LinearGradient(
-            colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+            colors: [Color(0xFF101B32), Color(0xFF243C68)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -28,7 +28,7 @@ class AppGradientHeader extends StatelessWidget {
                 Text(subtitle, style: const TextStyle(color: Color(0xFFE0E7FF), fontSize: 14)),
               ]),
             ),
-            CircleAvatar(radius: 28, backgroundColor: Colors.white24, child: Icon(icon, color: Colors.white, size: 29)),
+            CircleAvatar(radius: 28, backgroundColor: const Color(0xFF20E38A), child: Icon(icon, color: const Color(0xFF101B32), size: 29)),
           ],
         ),
       );

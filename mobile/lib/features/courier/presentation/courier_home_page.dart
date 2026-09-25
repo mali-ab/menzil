@@ -116,7 +116,7 @@ class _CourierHomePageState extends State<CourierHomePage> {
     if (_loading) const _LoadingCard()
     else if (_error != null) _ErrorCard(message: _error!, onRetry: _load)
     else if (_activeOrders.isEmpty) const _InfoCard(icon: Icons.route_outlined, text: 'Soňky kabul edilen sargytlar şu ýerde görüner.')
-    else ...[OrderMap(orders: _activeOrders, height: 290), const SizedBox(height: 20), ..._activeOrders.map((order) => Padding(padding: const EdgeInsets.only(bottom: 12), child: _OrderCard(order: order, actionLabel: _nextAction(order.status), action: () => _advance(order), showStatus: true)))],
+    else ...[OrderMap(orders: _activeOrders, height: 420, navigationMode: true), const SizedBox(height: 20), ..._activeOrders.map((order) => Padding(padding: const EdgeInsets.only(bottom: 12), child: _OrderCard(order: order, actionLabel: _nextAction(order.status), action: () => _advance(order), showStatus: true)))],
   ]);
 
   String _nextAction(String status) => switch (status) { 'accepted' => 'Alyş nokadyna barýaryn', 'to_pickup' => 'Ýüki aldym', _ => 'Eltirildi' };
