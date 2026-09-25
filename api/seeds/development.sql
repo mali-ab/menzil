@@ -3,10 +3,13 @@
 BEGIN;
 
 INSERT INTO users (id, phone, email, password_hash, full_name) VALUES
-    ('10000000-0000-0000-0000-000000000001', '+99360000001', 'aylar@example.test', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Aýlar Döwletowa'),
-    ('20000000-0000-0000-0000-000000000001', '+99360000002', 'begench@example.test', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Begenç Amanow'),
-    ('30000000-0000-0000-0000-000000000001', '+99360000003', 'meret@example.test', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Meret Geldiýew')
-ON CONFLICT (id) DO NOTHING;
+    ('10000000-0000-0000-0000-000000000001', '+99360000001', 'aylar@example.test', '$2a$10$X5wFBtLrL/kHcmrOGGTrGufsBX8CJ0WpQpF3pgeuxBB/H73BK1DW6', 'Aýlar Döwletowa'),
+    ('20000000-0000-0000-0000-000000000001', '+99360000002', 'begench@example.test', '$2a$10$X5wFBtLrL/kHcmrOGGTrGufsBX8CJ0WpQpF3pgeuxBB/H73BK1DW6', 'Begenç Amanow'),
+    ('30000000-0000-0000-0000-000000000001', '+99360000003', 'meret@example.test', '$2a$10$X5wFBtLrL/kHcmrOGGTrGufsBX8CJ0WpQpF3pgeuxBB/H73BK1DW6', 'Meret Geldiýew')
+ON CONFLICT (id) DO UPDATE SET
+    password_hash = EXCLUDED.password_hash,
+    full_name = EXCLUDED.full_name,
+    is_active = TRUE;
 
 INSERT INTO user_roles (user_id, role_code) VALUES
     ('10000000-0000-0000-0000-000000000001', 'client'),
