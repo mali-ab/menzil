@@ -23,7 +23,7 @@ class ApiClient {
       'phone': phone,
       'password': password,
     });
-    return AuthResponse(json['access_token'] as String, json['role'] as String);
+    return AuthResponse(json['access_token'] as String, json['role'] as String, json['user_id'] as String);
   }
 
   Future<AuthResponse> register({
@@ -40,12 +40,12 @@ class ApiClient {
       'role': role,
       if (transport != null) 'transport': transport,
     });
-    return AuthResponse(json['access_token'] as String, json['role'] as String);
+    return AuthResponse(json['access_token'] as String, json['role'] as String, json['user_id'] as String);
   }
 
-  Future<String> createOrder(String token, Map<String, Object> payload) async {
+  Future<CreatedOrder> createOrder(String token, Map<String, Object> payload) async {
     final json = await _request('POST', '/orders', token: token, body: payload);
-    return json['id'] as String;
+    return CreatedOrder(json['id'] as String, json['delivery_code'] as String);
   }
 
   Future<List<OrderSummary>> availableOrders(String token) async {
@@ -55,6 +55,9 @@ class ApiClient {
 
   Future<List<OrderSummary>> activeOrders(String token) async =>
       _ordersFrom(await _request('GET', '/courier/orders/active', token: token));
+
+  Future<List<OrderSummary>> myOrders(String token) async =>
+      _ordersFrom(await _request('GET', '/orders/my', token: token));
 
   List<OrderSummary> _ordersFrom(Map<String, dynamic> json) =>
       (json['items'] as List<dynamic>)
@@ -67,6 +70,23 @@ class ApiClient {
 
   Future<void> changeStatus(String token, String id, String status) =>
       _request('POST', '/courier/orders/$id/status', token: token, body: {'status': status});
+
+  Future<void> verifyDeliveryOTP(String token, String id, String code) =>
+      _request('POST', '/courier/orders/$id/proof/otp', token: token, body: {'code': code});
+
+  Future<void> submitDeliveryPhoto(String token, String id, String photoUrl) =>
+      _request('POST', '/courier/orders/$id/proof/photo', token: token, body: {'photo_url': photoUrl});
+
+  Future<List<ChatMessage>> messages(String token, String orderId) async {
+    final json = await _request('GET', '/orders/$orderId/messages', token: token);
+    return (json['items'] as List<dynamic>).cast<Map<String, dynamic>>().map(ChatMessage.fromJson).toList();
+  }
+
+  Future<ChatMessage> sendMessage(String token, String orderId, String body) async =>
+      ChatMessage.fromJson(await _request('POST', '/orders/$orderId/messages', token: token, body: {'body': body}));
+
+  Future<Map<String, dynamic>> startCall(String token, String orderId) =>
+      _request('POST', '/orders/$orderId/call', token: token);
 
   Future<void> setAvailability(String token, bool value) =>
       _request('PUT', '/courier/availability', token: token, body: {'is_available': value});
@@ -100,9 +120,22 @@ class ApiClient {
 }
 
 class AuthResponse {
-  const AuthResponse(this.token, this.role);
+  const AuthResponse(this.token, this.role, this.userID);
   final String token;
   final String role;
+  final String userID;
+}
+
+class CreatedOrder {
+  const CreatedOrder(this.id, this.deliveryCode);
+  final String id;
+  final String deliveryCode;
+}
+
+class ChatMessage {
+  const ChatMessage({required this.id, required this.senderID, required this.body, required this.sentAt});
+  factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(id: json['id'] as String, senderID: json['sender_id'] as String, body: json['body'] as String, sentAt: DateTime.parse(json['sent_at'] as String));
+  final String id; final String senderID; final String body; final DateTime sentAt;
 }
 
 class ApiException implements Exception {

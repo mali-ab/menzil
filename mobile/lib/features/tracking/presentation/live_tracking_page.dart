@@ -7,10 +7,11 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../../core/network/api_client.dart';
 
 class LiveTrackingPage extends StatefulWidget {
-  const LiveTrackingPage({super.key, required this.api, required this.token, required this.orderID});
+  const LiveTrackingPage({super.key, required this.api, required this.token, required this.orderID, this.deliveryCode});
   final ApiClient api;
   final String token;
   final String orderID;
+  final String? deliveryCode;
 
   @override
   State<LiveTrackingPage> createState() => _LiveTrackingPageState();
@@ -62,6 +63,10 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
             Text(_state, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             Text(_location == null ? 'Kurýer sargydy kabul edende onuň hereketi şu ýerde görkeziler.' : 'Soňky koordinata: ${_location!['latitude']}, ${_location!['longitude']}'),
+            if (widget.deliveryCode != null) ...[
+              const SizedBox(height: 18),
+              Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Eltiriş OTP kody', style: TextStyle(fontWeight: FontWeight.w800)), const SizedBox(height: 6), Text(widget.deliveryCode!, style: const TextStyle(fontSize: 30, letterSpacing: 8, fontWeight: FontWeight.w900)), const SizedBox(height: 4), const Text('Kody diňe kurýer eltiş nokadyna geleninde aýdyň.')]))),
+            ],
             const Spacer(),
             OutlinedButton.icon(onPressed: _connect, icon: const Icon(Icons.refresh), label: const Text('Täzeden birikmek')),
           ]),

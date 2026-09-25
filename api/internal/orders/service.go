@@ -2,16 +2,21 @@ package orders
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
+	"fmt"
+	"math/big"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var ErrUnavailable = errors.New("sargyt elýeterli däl")
 var ErrCapacity = errors.New("kurýeriň aktiw sargyt çägi doldy")
 var ErrInvalidTransition = errors.New("ýagdaý geçişi rugsat edilmeýär")
+var ErrProofInvalid = errors.New("eltiriş kody nädogry ýa-da möhleti gutardy")
 
 type Service struct{ db *pgxpool.Pool }
 
@@ -73,6 +78,68 @@ func (s *Service) Active(ctx context.Context, courierID uuid.UUID) ([]AvailableO
 		WHERE o.courier_id = $1 AND o.status_code IN ('accepted', 'to_pickup', 'delivering')
 		ORDER BY o.accepted_at ASC`
 	return scanOrders(ctx, s.db, q, courierID)
+}
+
+func (s *Service) Mine(ctx context.Context, userID uuid.UUID, role string) ([]AvailableOrder, error) {
+	column := "client_id"
+	if role == "courier" {
+		column = "courier_id"
+	}
+	query := `
+		SELECT o.id, o.public_number, o.title, o.weight_kg, o.required_transport_code, o.status_code,
+		       o.pickup_address, ST_Y(o.pickup_location::geometry), ST_X(o.pickup_location::geometry), o.delivery_address,
+		       ST_Y(o.delivery_location::geometry), ST_X(o.delivery_location::geometry), o.price_amount
+		FROM orders o
+		WHERE o.` + column + ` = $1
+		ORDER BY o.created_at DESC`
+	return scanOrders(ctx, s.db, query, userID)
+}
+
+func (s *Service) PrepareEscrowAndOTP(ctx context.Context, orderID, clientID uuid.UUID, amount float64) (string, error) {
+	value, err := rand.Int(rand.Reader, big.NewInt(1000000))
+	if err != nil { return "", err }
+	code := fmt.Sprintf("%06d", value.Int64())
+	hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
+	if err != nil { return "", err }
+	tx, err := s.db.Begin(ctx)
+	if err != nil { return "", err }
+	defer tx.Rollback(ctx)
+	_, err = tx.Exec(ctx, `INSERT INTO delivery_proofs(order_id, otp_hash, otp_expires_at) VALUES($1,$2,now() + interval '24 hours')`, orderID, string(hash))
+	if err != nil { return "", err }
+	if amount > 0 {
+		_, err = tx.Exec(ctx, `INSERT INTO escrow_transactions(order_id,client_id,amount,currency,status,provider,held_at) VALUES($1,$2,$3,'TMT','held','development',now())`, orderID, clientID, amount)
+		if err != nil { return "", err }
+	}
+	if err = tx.Commit(ctx); err != nil { return "", err }
+	return code, nil
+}
+
+func (s *Service) VerifyOTP(ctx context.Context, orderID, courierID uuid.UUID, code string) error {
+	var hash string
+	err := s.db.QueryRow(ctx, `SELECT p.otp_hash FROM delivery_proofs p JOIN orders o ON o.id=p.order_id WHERE p.order_id=$1 AND o.courier_id=$2 AND o.status_code='delivering' AND p.otp_expires_at > now()`, orderID, courierID).Scan(&hash)
+	if errors.Is(err, pgx.ErrNoRows) || bcrypt.CompareHashAndPassword([]byte(hash), []byte(code)) != nil { return ErrProofInvalid }
+	if err != nil { return err }
+	return s.finishDelivery(ctx, orderID, courierID, `UPDATE delivery_proofs SET otp_verified_at=now(), verified_by_user_id=$2 WHERE order_id=$1`, nil)
+}
+
+func (s *Service) SubmitPhoto(ctx context.Context, orderID, courierID uuid.UUID, photoURL string) error {
+	return s.finishDelivery(ctx, orderID, courierID, `UPDATE delivery_proofs SET photo_url=$3, photo_uploaded_at=now(), verified_by_user_id=$2 WHERE order_id=$1`, []any{photoURL})
+}
+
+func (s *Service) finishDelivery(ctx context.Context, orderID, courierID uuid.UUID, proofQuery string, proofArgs []any) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil { return err }
+	defer tx.Rollback(ctx)
+	args := []any{orderID, courierID}
+	args = append(args, proofArgs...)
+	if _, err = tx.Exec(ctx, proofQuery, args...); err != nil { return err }
+	var updated uuid.UUID
+	err = tx.QueryRow(ctx, `UPDATE orders SET status_code='delivered', delivered_at=now() WHERE id=$1 AND courier_id=$2 AND status_code='delivering' RETURNING id`, orderID, courierID).Scan(&updated)
+	if errors.Is(err, pgx.ErrNoRows) { return ErrInvalidTransition }
+	if err != nil { return err }
+	if _, err = tx.Exec(ctx, `UPDATE escrow_transactions SET courier_id=$2,status='released',released_at=now() WHERE order_id=$1 AND status='held'`, orderID, courierID); err != nil { return err }
+	if _, err = tx.Exec(ctx, `INSERT INTO order_status_history(order_id,status_code,actor_user_id) VALUES($1,'delivered',$2)`, orderID, courierID); err != nil { return err }
+	return tx.Commit(ctx)
 }
 
 type rowQuerier interface {

@@ -15,12 +15,14 @@ class SessionController extends ChangeNotifier {
   SessionState state = SessionState.loading;
   String? token;
   String? role;
+  String? userID;
 
   Future<void> restore() async {
     final saved = await _storage.read();
     if (saved != null) {
       token = saved.token;
       role = saved.role;
+      userID = saved.userID;
       state = SessionState.authenticated;
     } else {
       state = SessionState.unauthenticated;
@@ -54,7 +56,8 @@ class SessionController extends ChangeNotifier {
     token = response.token;
     role = response.role;
     state = SessionState.authenticated;
-    await _storage.write(response.token, response.role);
+    userID = response.userID;
+    await _storage.write(response.token, response.role, response.userID);
     notifyListeners();
   }
 
@@ -62,6 +65,7 @@ class SessionController extends ChangeNotifier {
     await _storage.clear();
     token = null;
     role = null;
+    userID = null;
     state = SessionState.unauthenticated;
     notifyListeners();
   }

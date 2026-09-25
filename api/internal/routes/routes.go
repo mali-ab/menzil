@@ -5,6 +5,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"menzil/internal/auth"
+	"menzil/internal/communication"
 	"menzil/internal/config"
 	"menzil/internal/middleware"
 	"menzil/internal/orders"
@@ -15,6 +16,7 @@ func Register(router *gin.Engine, db *pgxpool.Pool, cfg config.Config) {
 	tokens := auth.NewTokenManager(cfg.JWTSecret, cfg.AccessTokenTTL)
 	authHandler := auth.NewHandler(db, tokens)
 	orderHandler := orders.NewHandler(orders.NewService(db))
+	communicationHandler := communication.NewHandler(db)
 	trackingHandler := tracking.NewHandler(db, tracking.NewHub())
 
 	router.GET("/healthz", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
@@ -27,6 +29,10 @@ func Register(router *gin.Engine, db *pgxpool.Pool, cfg config.Config) {
 	client := protected.Group("")
 	client.Use(middleware.RequireRole("client"))
 	client.POST("/orders", orderHandler.Create)
+	protected.GET("/orders/my", orderHandler.Mine)
+	protected.GET("/orders/:id/messages", communicationHandler.Messages)
+	protected.POST("/orders/:id/messages", communicationHandler.Send)
+	protected.POST("/orders/:id/call", communicationHandler.StartCall)
 
 	courier := protected.Group("/courier")
 	courier.Use(middleware.RequireRole("courier"))
@@ -35,6 +41,8 @@ func Register(router *gin.Engine, db *pgxpool.Pool, cfg config.Config) {
 	courier.GET("/orders/active", orderHandler.Active)
 	courier.POST("/orders/:id/accept", orderHandler.Accept)
 	courier.POST("/orders/:id/status", orderHandler.ChangeStatus)
+	courier.POST("/orders/:id/proof/otp", orderHandler.VerifyOTP)
+	courier.POST("/orders/:id/proof/photo", orderHandler.SubmitPhoto)
 	courier.GET("/ws/location", trackingHandler.CourierSocket)
 
 	protected.GET("/orders/:id/tracking/ws", trackingHandler.ClientSocket)

@@ -61,9 +61,31 @@ class _CourierHomePageState extends State<CourierHomePage> {
   }
 
   Future<void> _advance(OrderSummary order) async {
+    if (order.status == 'delivering') {
+      await _showProofSheet(order);
+      return;
+    }
     final next = switch (order.status) { 'accepted' => 'to_pickup', 'to_pickup' => 'delivering', _ => 'delivered' };
     try { await widget.api.changeStatus(widget.session.token!, order.id, next); await _load(); }
     catch (error) { if (mounted) showError(context, error); }
+  }
+
+  Future<void> _showProofSheet(OrderSummary order) async {
+    final code = TextEditingController();
+    final photo = TextEditingController();
+    await showModalBottomSheet<void>(context: context, isScrollControlled: true, builder: (sheetContext) => Padding(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.viewInsetsOf(sheetContext).bottom),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const Text('Eltirişi tassykla', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 6), const Text('Alyjydan OTP koduny soraň ýa-da foto subutnamasynyň URL-sini goşuň.'), const SizedBox(height: 18),
+        TextField(controller: code, keyboardType: TextInputType.number, maxLength: 6, decoration: const InputDecoration(labelText: '6 belgili OTP kod')),
+        FilledButton(onPressed: () async { try { await widget.api.verifyDeliveryOTP(widget.session.token!, order.id, code.text); if (sheetContext.mounted) Navigator.pop(sheetContext); await _load(); } catch (error) { if (mounted) showError(context, error); } }, child: const Text('OTP bilen tassyklamak')),
+        const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Row(children: [Expanded(child: Divider()), Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('ýa-da')), Expanded(child: Divider())])),
+        TextField(controller: photo, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Foto URL (development)')),
+        OutlinedButton(onPressed: () async { try { await widget.api.submitDeliveryPhoto(widget.session.token!, order.id, photo.text); if (sheetContext.mounted) Navigator.pop(sheetContext); await _load(); } catch (error) { if (mounted) showError(context, error); } }, child: const Text('Foto bilen tassyklamak')),
+      ]),
+    ));
+    code.dispose(); photo.dispose();
   }
 
   @override
