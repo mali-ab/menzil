@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"menzil/internal/admin"
 	"menzil/internal/auth"
 	"menzil/internal/communication"
 	"menzil/internal/config"
@@ -14,15 +15,17 @@ import (
 
 func Register(router *gin.Engine, db *pgxpool.Pool, cfg config.Config) {
 	tokens := auth.NewTokenManager(cfg.JWTSecret, cfg.AccessTokenTTL)
-	authHandler := auth.NewHandler(db, tokens)
+	authHandler := auth.NewHandler(db, tokens, cfg.RefreshTokenTTL)
+	adminHandler := admin.NewHandler(db)
 	orderHandler := orders.NewHandler(orders.NewService(db))
 	communicationHandler := communication.NewHandler(db)
 	trackingHandler := tracking.NewHandler(db, tracking.NewHub())
 
-	router.GET("/healthz", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
+	router.GET("/healthz", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok", "admin_api": true}) })
 	v1 := router.Group("/v1")
 	v1.POST("/auth/register", authHandler.Register)
 	v1.POST("/auth/login", authHandler.Login)
+	v1.POST("/auth/refresh", authHandler.Refresh)
 
 	protected := v1.Group("")
 	protected.Use(middleware.Authenticate(tokens))
@@ -46,4 +49,13 @@ func Register(router *gin.Engine, db *pgxpool.Pool, cfg config.Config) {
 	courier.GET("/ws/location", trackingHandler.CourierSocket)
 
 	protected.GET("/orders/:id/tracking/ws", trackingHandler.ClientSocket)
+	adminGroup := protected.Group("/admin")
+	adminGroup.Use(middleware.RequireRole("admin"))
+	adminGroup.GET("/overview", adminHandler.Overview)
+	adminGroup.GET("/orders", adminHandler.Orders)
+	adminGroup.POST("/orders", adminHandler.CreateOrder)
+	adminGroup.PUT("/orders/:id/status", adminHandler.SetOrderStatus)
+	adminGroup.PUT("/orders/:id/courier", adminHandler.AssignCourier)
+	adminGroup.GET("/couriers", adminHandler.Couriers)
+	adminGroup.PUT("/couriers/:id/availability", adminHandler.SetCourierAvailability)
 }

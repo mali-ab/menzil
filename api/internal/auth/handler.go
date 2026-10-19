@@ -1,8 +1,13 @@
 package auth
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -12,12 +17,13 @@ import (
 )
 
 type Handler struct {
-	db     *pgxpool.Pool
-	tokens *TokenManager
+	db         *pgxpool.Pool
+	tokens     *TokenManager
+	refreshTTL time.Duration
 }
 
-func NewHandler(db *pgxpool.Pool, tokens *TokenManager) *Handler {
-	return &Handler{db: db, tokens: tokens}
+func NewHandler(db *pgxpool.Pool, tokens *TokenManager, refreshTTL time.Duration) *Handler {
+	return &Handler{db: db, tokens: tokens, refreshTTL: refreshTTL}
 }
 
 type registerRequest struct {
@@ -119,13 +125,107 @@ func (h *Handler) Login(c *gin.Context) {
 }
 
 func (h *Handler) respondWithToken(c *gin.Context, userID uuid.UUID, role string) {
-	token, err := h.tokens.Issue(userID, role)
+	accessToken, err := h.tokens.Issue(userID, role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token döredilmedi"})
 		return
 	}
+	refreshToken, err := newRefreshToken()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Täzelenme tokeni döredilmedi"})
+		return
+	}
+	if _, err = h.db.Exec(c.Request.Context(), `
+		INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
+		VALUES ($1, $2, $3)`, userID, hashRefreshToken(refreshToken), time.Now().Add(h.refreshTTL)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Täzelenme tokeni saklanylmady"})
+		return
+	}
+	h.respondWithTokens(c, accessToken, refreshToken, userID, role)
+}
+
+type refreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+func (h *Handler) Refresh(c *gin.Context) {
+	var req refreshRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx := c.Request.Context()
+	tx, err := h.db.Begin(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Maglumatlar bazasy elýeterli däl"})
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	var userID uuid.UUID
+	var role string
+	err = tx.QueryRow(ctx, `
+		SELECT rt.user_id, ur.role_code
+		FROM refresh_tokens rt
+		JOIN users u ON u.id = rt.user_id
+		JOIN user_roles ur ON ur.user_id = rt.user_id
+		WHERE rt.token_hash = $1 AND rt.revoked_at IS NULL
+		  AND rt.expires_at > now() AND u.is_active = TRUE
+		LIMIT 1 FOR UPDATE OF rt`, hashRefreshToken(req.RefreshToken)).Scan(&userID, &role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Täzelenme tokeni nädogry ýa-da möhleti gutardy"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ulgam säwligi"})
+		return
+	}
+
+	accessToken, err := h.tokens.Issue(userID, role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token döredilmedi"})
+		return
+	}
+	refreshToken, err := newRefreshToken()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Täzelenme tokeni döredilmedi"})
+		return
+	}
+	if _, err = tx.Exec(ctx, `UPDATE refresh_tokens SET revoked_at = now() WHERE token_hash = $1`, hashRefreshToken(req.RefreshToken)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token täzelenmedi"})
+		return
+	}
+	if _, err = tx.Exec(ctx, `
+		INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
+		VALUES ($1, $2, $3)`, userID, hashRefreshToken(refreshToken), time.Now().Add(h.refreshTTL)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token täzelenmedi"})
+		return
+	}
+	if err = tx.Commit(ctx); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token täzelenmedi"})
+		return
+	}
+	h.respondWithTokens(c, accessToken, refreshToken, userID, role)
+}
+
+func newRefreshToken() (string, error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(raw), nil
+}
+
+func hashRefreshToken(token string) string {
+	hash := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(hash[:])
+}
+
+func (h *Handler) respondWithTokens(c *gin.Context, accessToken, refreshToken string, userID uuid.UUID, role string) {
 	c.JSON(http.StatusOK, gin.H{
-		"access_token": token,
+		"access_token": accessToken,
+		"refresh_token": refreshToken,
 		"token_type":   "Bearer",
 		"user_id":      userID,
 		"role":         role,

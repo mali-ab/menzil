@@ -7,10 +7,11 @@ import (
 )
 
 type Config struct {
-	Address        string
-	DatabaseURL    string
-	JWTSecret      []byte
-	AccessTokenTTL time.Duration
+	Address         string
+	DatabaseURL     string
+	JWTSecret       []byte
+	AccessTokenTTL  time.Duration
+	RefreshTokenTTL time.Duration
 }
 
 func Load() Config {
@@ -18,15 +19,20 @@ func Load() Config {
 	if err != nil {
 		log.Fatalf("ACCESS_TOKEN_TTL nädogry: %v", err)
 	}
+	refreshTTL, err := time.ParseDuration(value("REFRESH_TOKEN_TTL", "720h"))
+	if err != nil {
+		log.Fatalf("REFRESH_TOKEN_TTL nädogry: %v", err)
+	}
 	secret := value("JWT_SECRET", "development-only-secret-change-me-please")
 	if len(secret) < 32 {
 		log.Fatal("JWT_SECRET azyndan 32 nyşan bolmaly")
 	}
 	return Config{
-		Address:        value("APP_ADDRESS", ":8080"),
-		DatabaseURL:    value("DATABASE_URL", "postgres://menzil:menzil@localhost:5432/menzil?sslmode=disable"),
-		JWTSecret:      []byte(secret),
-		AccessTokenTTL: ttl,
+		Address:         value("APP_ADDRESS", ":8080"),
+		DatabaseURL:     value("DATABASE_URL", "postgres://menzil:menzil@localhost:5432/menzil?sslmode=disable"),
+		JWTSecret:       []byte(secret),
+		AccessTokenTTL:  ttl,
+		RefreshTokenTTL: refreshTTL,
 	}
 }
 
