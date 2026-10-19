@@ -56,8 +56,8 @@ class _AuthPageState extends State<AuthPage> {
                 child: Form(
                   key: _formKey,
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    const Icon(Icons.local_shipping_rounded, color: Color(0xFF4F46E5), size: 58),
-                    const SizedBox(height: 16),
+                    const Center(child: AppLogo(size: 82)),
+                    const SizedBox(height: 14),
                     Text('Menzil', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900)),
                     const SizedBox(height: 6),
                     Text('Eltip beriş — ýönekeý we açyk.', textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey.shade600)),

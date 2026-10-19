@@ -1,5 +1,23 @@
 import 'package:flutter/material.dart';
 
+class AppLogo extends StatelessWidget {
+  const AppLogo({super.key, this.size = 38});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+        borderRadius: BorderRadius.circular(size * 0.24),
+        child: Image.asset(
+          'assets/launcher_icon.png',
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          semanticLabel: 'Menzil',
+        ),
+      );
+}
+
 class AppGradientHeader extends StatelessWidget {
   const AppGradientHeader({super.key, required this.title, required this.subtitle, required this.icon});
 
@@ -11,24 +29,17 @@ class AppGradientHeader extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         width: double.infinity,
         padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          gradient: const LinearGradient(
-            colors: [Color(0xFF101B32), Color(0xFF243C68)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+        decoration: BoxDecoration(color: const Color(0xFFE8F5F1), borderRadius: BorderRadius.circular(24), border: Border.all(color: const Color(0xFFCBE5DC))),
         child: Row(
           children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
+                Text(title, style: const TextStyle(color: Color(0xFF134E4A), fontSize: 24, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 6),
-                Text(subtitle, style: const TextStyle(color: Color(0xFFE0E7FF), fontSize: 14)),
+                Text(subtitle, style: const TextStyle(color: Color(0xFF3F625D), fontSize: 14)),
               ]),
             ),
-            CircleAvatar(radius: 28, backgroundColor: const Color(0xFF20E38A), child: Icon(icon, color: const Color(0xFF101B32), size: 29)),
+            CircleAvatar(radius: 28, backgroundColor: Colors.white, child: Icon(icon, color: const Color(0xFF0F766E), size: 29)),
           ],
         ),
       );
@@ -42,9 +53,9 @@ class LocationLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
         children: [
-          _point(const Color(0xFF11B981), from),
+          _point(const Color(0xFF047857), from),
           Container(margin: const EdgeInsets.only(left: 10), height: 18, width: 2, color: const Color(0xFFCBD5E1)),
-          _point(const Color(0xFF4F46E5), to),
+          _point(const Color(0xFFF59E0B), to),
         ],
       );
 

@@ -45,7 +45,12 @@ class ApiClient {
 
   Future<CreatedOrder> createOrder(String token, Map<String, Object> payload) async {
     final json = await _request('POST', '/orders', token: token, body: payload);
-    return CreatedOrder(json['id'] as String, json['delivery_code'] as String);
+    final id = json['id'];
+    if (id is! String || id.isEmpty) {
+      throw ApiException('Serwer sargydyň ID-sini gaýtarmady');
+    }
+    final code = json['delivery_code'];
+    return CreatedOrder(id, code is String && code.isNotEmpty ? code : null);
   }
 
   Future<List<OrderSummary>> availableOrders(String token) async {
@@ -91,6 +96,9 @@ class ApiClient {
   Future<void> setAvailability(String token, bool value) =>
       _request('PUT', '/courier/availability', token: token, body: {'is_available': value});
 
+  Future<Map<String, dynamic>> adminOverview(String token) =>
+      _request('GET', '/admin/overview', token: token);
+
   Future<Map<String, dynamic>> _request(
     String method,
     String path, {
@@ -129,7 +137,7 @@ class AuthResponse {
 class CreatedOrder {
   const CreatedOrder(this.id, this.deliveryCode);
   final String id;
-  final String deliveryCode;
+  final String? deliveryCode;
 }
 
 class ChatMessage {

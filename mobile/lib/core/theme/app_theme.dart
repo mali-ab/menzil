@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppTheme {
-  static const _ink = Color(0xFF101B32);
-  static const _indigo = Color(0xFF182B4D);
-  static const _mint = Color(0xFF20E38A);
-  static const _surface = Color(0xFFF8F9FA);
+  static const ink = Color(0xFF0F172A);
+  static const green = Color(0xFF0F766E);
+  static const greenSoft = Color(0xFFE8F5F1);
+  static const orange = Color(0xFFF59E0B);
+  static const surface = Color(0xFFF7FAF9);
 
   static final light = ThemeData(
     useMaterial3: true,
-    scaffoldBackgroundColor: _surface,
+    scaffoldBackgroundColor: surface,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: _indigo,
-      primary: _indigo,
-      secondary: _mint,
+      seedColor: green,
+      primary: green,
+      secondary: orange,
       surface: Colors.white,
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: _surface,
-      foregroundColor: _ink,
+      backgroundColor: surface,
+      foregroundColor: ink,
       centerTitle: false,
       elevation: 0,
       titleTextStyle: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
@@ -25,27 +26,28 @@ abstract final class AppTheme {
     cardTheme: CardThemeData(
       color: Colors.white,
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFE5EEEC))),
       margin: EdgeInsets.zero,
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.white,
+      fillColor: const Color(0xFFFBFDFC),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
+        borderSide: const BorderSide(color: Color(0xFFDCE9E5)),
       ),
     ),
-    filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(minimumSize: const Size(48, 52), backgroundColor: _mint, foregroundColor: _ink, textStyle: const TextStyle(fontWeight: FontWeight.w800), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))),
+    navigationBarTheme: const NavigationBarThemeData(backgroundColor: Colors.white, indicatorColor: greenSoft, labelTextStyle: WidgetStatePropertyAll(TextStyle(fontWeight: FontWeight.w700))),
+    filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(minimumSize: const Size(48, 54), backgroundColor: green, foregroundColor: Colors.white, elevation: 0, textStyle: const TextStyle(fontWeight: FontWeight.w800), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))),
   );
 
   static final dark = ThemeData(
     useMaterial3: true,
     scaffoldBackgroundColor: const Color(0xFF121212),
-    colorScheme: const ColorScheme.dark(primary: _mint, secondary: _mint, surface: Color(0xFF1D2430), onSurface: Color(0xFFF4F7FB)),
+    colorScheme: const ColorScheme.dark(primary: Color(0xFF34D399), secondary: orange, surface: Color(0xFF1D2430), onSurface: Color(0xFFF4F7FB)),
     appBarTheme: const AppBarTheme(backgroundColor: Color(0xFF121212), foregroundColor: Color(0xFFF4F7FB), elevation: 0),
     cardTheme: CardThemeData(color: const Color(0xFF1D2430), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)), margin: EdgeInsets.zero),
     inputDecorationTheme: InputDecorationTheme(filled: true, fillColor: const Color(0xFF1D2430), border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none)),
-    filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(minimumSize: const Size(48, 52), backgroundColor: _mint, foregroundColor: _ink, textStyle: const TextStyle(fontWeight: FontWeight.w800), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))),
+    filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(minimumSize: const Size(48, 52), backgroundColor: const Color(0xFF34D399), foregroundColor: ink, textStyle: const TextStyle(fontWeight: FontWeight.w800), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))),
   );
 }
