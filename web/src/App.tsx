@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
-  AlertTriangle, ArrowRight, Bell, Box, Check, ChevronDown, ChevronRight,
+  AlertTriangle, ArrowRight, Bell, Bike, Box, Car, Check, ChevronDown, ChevronRight,
   Command, LayoutDashboard, LocateFixed,
   Map, Menu, MessageSquareText, MoreHorizontal, Navigation, PackageCheck,
   LogOut, Phone, Plus, Search, SlidersHorizontal,
-  Truck, UsersRound, X, Zap,
+  Footprints, Truck, UsersRound, X, Zap,
 } from 'lucide-react'
 import { type Order, type OrderStatus } from './data'
 import logo from '../assets/launcher_icon.png'
@@ -55,6 +55,11 @@ const transportLabels: Record<string, [string, string]> = {
   car: ['Автомобиль', 'Awtoulag'], truck: ['Грузовик', 'Ýük ulagy'],
 }
 const transportName = (language: Language, value: string) => transportLabels[value]?.[language === 'tk' ? 1 : 0] || value
+const transportIcon = (value: string) => value === 'foot' ? Footprints : value === 'bicycle' || value === 'scooter' ? Bike : value === 'car' ? Car : Truck
+function TransportLabel({ language, value }: { language: Language; value: string }) {
+  const Icon = transportIcon(value)
+  return <span className="transport-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon size={13} />{transportName(language, value)}</span>
+}
 
 const statusClass: Record<OrderStatus, string> = {
   'Новый': 'new', 'Курьер назначен': 'assigned', 'В пути': 'moving', 'Задержка': 'late', 'Доставлен': 'moving', 'Отменён': 'late',
@@ -223,7 +228,7 @@ function CouriersPage({ items, query, language, onToggle }: { items: AdminCourie
       <div className="panel courier-directory"><div className="panel-head"><div><h2>{tr(language, 'Команда курьеров')}</h2><span>{visible.length} {language === 'tk' ? 'tapyldy · API maglumatlary' : 'найдено · данные API'}</span></div></div>
         <div className="courier-cards">{visible.map((courier, index) => <article className="courier-card" key={courier.id}>
           <div className={`avatar ${['mint','blue','orange','violet'][index % 4]}`}>{courier.name.split(' ').map(part => part[0]).join('').slice(0,2)}<i></i></div>
-          <div className="courier-card-main"><h3>{courier.name}</h3><p>{transportName(language, courier.transport)} · {language === 'tk' ? 'reýting' : 'рейтинг'} {courier.rating.toFixed(1)}</p><div><span><b>{courier.active_orders}</b> {language === 'tk' ? 'işjeň sargyt' : 'активных заказов'}</span><span className={courier.is_available ? 'available' : 'offline'}>{tr(language, courier.is_available ? 'На линии' : 'Не доступен')}</span></div></div>
+          <div className="courier-card-main"><h3>{courier.name}</h3><p><TransportLabel language={language} value={courier.transport} /> · {language === 'tk' ? 'reýting' : 'рейтинг'} {courier.rating.toFixed(1)}</p><div><span><b>{courier.active_orders}</b> {language === 'tk' ? 'işjeň sargyt' : 'активных заказов'}</span><span className={courier.is_available ? 'available' : 'offline'}>{tr(language, courier.is_available ? 'На линии' : 'Не доступен')}</span></div></div>
           <button className={courier.is_available ? 'availability active' : 'availability'} onClick={() => onToggle(courier)} aria-label={`${tr(language, 'Изменить доступность')}: ${courier.name}`}><i></i></button>
         </article>)}</div>
         {!visible.length && <div className="empty"><Search size={24} /><b>{language === 'tk' ? 'Kurýer tapylmady' : 'Курьеры не найдены'}</b><span>{language === 'tk' ? 'Gözleg sözüni üýtgediň' : 'Измените поисковый запрос'}</span></div>}
@@ -244,7 +249,7 @@ function OrdersTable({ items, selected, onSelect, filter, query, language }: { i
     {visible.length ? visible.map(order => <button key={order.id} className={`table-row ${selected === order.id ? 'selected' : ''}`} onClick={() => onSelect(order.id)}>
       <span className="order-cell"><b>#{order.id}</b><small>{order.created} · {order.client}</small></span>
       <span className="route-cell"><i className="route-dots"><em></em><em></em></i><span><b>{order.pickup}</b><small>{order.destination}</small></span></span>
-      <span className="courier-cell"><i>{order.courier === 'Не назначен' ? '?' : order.courier.split(' ').map(x => x[0]).join('')}</i><span><b>{tr(language, order.courier)}</b><small>{transportName(language, order.vehicle)}</small></span></span>
+      <span className="courier-cell"><i>{order.courier === 'Не назначен' ? '?' : order.courier.split(' ').map(x => x[0]).join('')}</i><span><b>{tr(language, order.courier)}</b><small><TransportLabel language={language} value={order.vehicle} /></small></span></span>
       <span><i className={`status ${statusClass[order.status]}`}><i></i>{tr(language, order.status)}</i></span>
       <span className={order.status === 'Задержка' ? 'late-text' : ''}><b>{tr(language, order.eta)}</b><small>{order.price} TMT</small></span>
       <span><ChevronRight size={17} /></span>
@@ -268,7 +273,7 @@ function OrderDrawer({ order, couriers, language, onClose, onAction, onAssign, o
     </div>
     <div className="detail-route"><div><i className="green"></i><span><small>{tr(language, 'Откуда')}</small><b>{order.pickup}</b></span></div><div><i className="purple"></i><span><small>{tr(language, 'Куда')}</small><b>{order.destination}</b></span></div></div>
     <div className="drawer-section-title">{tr(language, 'Курьер')}</div>
-    <div className="driver"><div className="avatar dark">{order.courier === 'Не назначен' ? '?' : order.courier.split(' ').map(x => x[0]).join('')}</div><div><b>{tr(language, order.courier)}</b><span>{transportName(language, order.vehicle)}</span></div><button onClick={onCall} title={tr(language, 'Позвонить')}><Phone size={17} /></button><button onClick={onMessage} title={tr(language, 'Написать')}><MessageSquareText size={17} /></button></div>
+    <div className="driver"><div className="avatar dark">{order.courier === 'Не назначен' ? '?' : order.courier.split(' ').map(x => x[0]).join('')}</div><div><b>{tr(language, order.courier)}</b><TransportLabel language={language} value={order.vehicle} /></div><button onClick={onCall} title={tr(language, 'Позвонить')}><Phone size={17} /></button><button onClick={onMessage} title={tr(language, 'Написать')}><MessageSquareText size={17} /></button></div>
     <div className="note"><b>{tr(language, 'Комментарий')}</b><p>{order.note}</p></div>
     {order.apiId && <div className="admin-controls"><label>{tr(language, 'Назначить курьера')}<select defaultValue="" onChange={event => event.target.value && onAssign(event.target.value)}><option value="" disabled>{tr(language, 'Выберите курьера')}</option>{couriers.map(courier => <option value={courier.id} key={courier.id}>{courier.name} · {transportName(language, courier.transport)}</option>)}</select></label><div><button onClick={() => onStatus('to_pickup')}>{tr(language, 'К точке')}</button><button onClick={() => onStatus('delivering')}>{tr(language, 'В пути')}</button><button onClick={() => onStatus('delivered')}>{tr(language, 'Доставлен')}</button><button className="danger" onClick={() => onStatus('cancelled')}>{tr(language, 'Отменить')}</button></div></div>}
     <div className="drawer-actions"><button className="secondary" onClick={onMessage}><MessageSquareText size={17} />{tr(language, 'Написать')}</button><button className="primary" onClick={() => order.status === 'Новый' ? onAction(tr(language, 'Сначала назначьте курьера')) : onStatus(order.status === 'Курьер назначен' ? 'to_pickup' : order.status === 'В пути' ? 'delivered' : 'delivering')}>{tr(language, 'Следующий статус')}</button></div>
@@ -448,7 +453,7 @@ export function App() {
           </div>
           {page === 'Диспетчерская' && <aside className="right-column">
             <div className="panel courier-panel"><div className="panel-head"><div><h2>{tr(language, 'Курьеры')}</h2><span>{tr(language, 'Данные API в реальном времени')}</span></div><button className="ghost" onClick={() => window.open('https://www.openstreetmap.org/#map=12/37.94/58.38', '_blank', 'noopener,noreferrer')}>{tr(language, 'На карте')}</button></div>
-              <div className="courier-list">{courierItems.map((courier, index) => <div className="courier" key={courier.id}><div className={`avatar ${['mint','blue','orange','violet'][index % 4]}`}>{courier.name.split(' ').map(part => part[0]).join('').slice(0,2)}<i></i></div><div><b>{courier.name}</b><span>{transportName(language, courier.transport)} · {courier.active_orders} {language === 'tk' ? 'sargyt' : 'заказа'}</span></div><small className={courier.is_available ? '' : 'warn'}>{tr(language, courier.is_available ? 'На линии' : 'Не доступен')}</small><button onClick={() => toggleCourier(courier)} title={tr(language, 'Изменить доступность')}><MoreHorizontal size={17} /></button></div>)}</div>
+              <div className="courier-list">{courierItems.map((courier, index) => <div className="courier" key={courier.id}><div className={`avatar ${['mint','blue','orange','violet'][index % 4]}`}>{courier.name.split(' ').map(part => part[0]).join('').slice(0,2)}<i></i></div><div><b>{courier.name}</b><span><TransportLabel language={language} value={courier.transport} /> · {courier.active_orders} {language === 'tk' ? 'sargyt' : 'заказа'}</span></div><small className={courier.is_available ? '' : 'warn'}>{tr(language, courier.is_available ? 'На линии' : 'Не доступен')}</small><button onClick={() => toggleCourier(courier)} title={tr(language, 'Изменить доступность')}><MoreHorizontal size={17} /></button></div>)}</div>
               <button className="wide-ghost" onClick={() => setPage('Курьеры')}>{tr(language, 'Все курьеры')} <ChevronRight size={16} /></button>
             </div>
           </aside>}

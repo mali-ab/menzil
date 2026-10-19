@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/network/api_client.dart';
+import 'transport_icons.dart';
 
 class OrderMap extends StatelessWidget {
   const OrderMap({super.key, required this.orders, this.height = 260, this.navigationMode = false});
@@ -63,7 +64,7 @@ class OrderMap extends StatelessWidget {
                   ],
                 ),
               MarkerLayer(markers: [
-                if (navigationMode && orders.isNotEmpty) _courierMarker(_courierPoint(orders.first)),
+                if (navigationMode && orders.isNotEmpty) _courierMarker(_courierPoint(orders.first), orders.first.courierTransport.isNotEmpty ? orders.first.courierTransport : orders.first.transport),
                 for (final order in orders) ...[
                   _marker(LatLng(order.pickupLatitude, order.pickupLongitude), const Color(0xFF0F766E), Icons.inventory_2_rounded),
                   _marker(LatLng(order.deliveryLatitude, order.deliveryLongitude), const Color(0xFFF59E0B), Icons.location_on_rounded),
@@ -112,11 +113,11 @@ class OrderMap extends StatelessWidget {
 
   LatLng _courierPoint(OrderSummary order) => LatLng(order.pickupLatitude + (order.deliveryLatitude - order.pickupLatitude) * .32, order.pickupLongitude + (order.deliveryLongitude - order.pickupLongitude) * .32);
 
-  Marker _courierMarker(LatLng point) => Marker(
+  Marker _courierMarker(LatLng point, String transport) => Marker(
     point: point, width: 64, height: 64,
     child: Stack(alignment: Alignment.center, children: [
       Container(width: 60, height: 60, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0x6614B8A6), width: 2))),
-      DecoratedBox(decoration: const BoxDecoration(color: Color(0xFFE8F5F1), shape: BoxShape.circle, boxShadow: [BoxShadow(color: Color(0x220F766E), blurRadius: 12)]), child: const SizedBox(width: 42, height: 42, child: Icon(Icons.directions_car_filled_rounded, color: Color(0xFF0F766E), size: 23))),
+      DecoratedBox(decoration: const BoxDecoration(color: Color(0xFFE8F5F1), shape: BoxShape.circle, boxShadow: [BoxShadow(color: Color(0x220F766E), blurRadius: 12)]), child: SizedBox(width: 42, height: 42, child: Icon(transportIcon(transport), color: const Color(0xFF0F766E), size: 23))),
     ]),
   );
 }

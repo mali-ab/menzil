@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/session/session_controller.dart';
 import '../../shared/presentation/app_widgets.dart';
+import '../../shared/presentation/profile_page.dart';
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key, required this.session, required this.api});
@@ -22,7 +23,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
     appBar: AppBar(
       leading: const Padding(padding: EdgeInsets.all(8), child: AppLogo()),
       title: const Text('Dolandyryş paneli'),
-      actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)), IconButton(onPressed: widget.session.logout, icon: const Icon(Icons.logout_rounded))],
+      actions: [IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage(session: widget.session, api: widget.api))), icon: const Icon(Icons.manage_accounts_outlined), tooltip: 'Profil'), IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)), IconButton(onPressed: widget.session.logout, icon: const Icon(Icons.logout_rounded))],
     ),
     body: RefreshIndicator(onRefresh: _load, child: ListView(padding: const EdgeInsets.all(20), children: [
       const AppGradientHeader(title: 'Hyzmat ýagdaýy', subtitle: 'Sargytlary we hyzmat güýjüni bir ýerde görüň.', icon: Icons.dashboard_rounded),

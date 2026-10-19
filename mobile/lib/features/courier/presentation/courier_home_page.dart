@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/session/session_controller.dart';
 import '../../shared/presentation/app_widgets.dart';
 import '../../shared/presentation/order_map.dart';
+import '../../shared/presentation/profile_page.dart';
+import '../../shared/presentation/transport_icons.dart';
 import '../data/location_tracking_service.dart';
 
 class CourierHomePage extends StatefulWidget {
@@ -73,21 +76,8 @@ class _CourierHomePageState extends State<CourierHomePage> {
   }
 
   Future<void> _showProofSheet(OrderSummary order) async {
-    final code = TextEditingController();
-    final photo = TextEditingController();
-    await showModalBottomSheet<void>(context: context, isScrollControlled: true, builder: (sheetContext) => Padding(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.viewInsetsOf(sheetContext).bottom),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const Text('Eltirişi tassykla', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 6), const Text('Alyjydan OTP koduny soraň ýa-da foto subutnamasynyň URL-sini goşuň.'), const SizedBox(height: 18),
-        TextField(controller: code, keyboardType: TextInputType.number, maxLength: 6, decoration: const InputDecoration(labelText: '6 belgili OTP kod')),
-        FilledButton(onPressed: () async { try { await widget.api.verifyDeliveryOTP(widget.session.token!, order.id, code.text); if (sheetContext.mounted) Navigator.pop(sheetContext); await _load(); } catch (error) { if (mounted) showError(context, error); } }, child: const Text('OTP bilen tassyklamak')),
-        const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Row(children: [Expanded(child: Divider()), Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('ýa-da')), Expanded(child: Divider())])),
-        TextField(controller: photo, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Foto URL (development)')),
-        OutlinedButton(onPressed: () async { try { await widget.api.submitDeliveryPhoto(widget.session.token!, order.id, photo.text); if (sheetContext.mounted) Navigator.pop(sheetContext); await _load(); } catch (error) { if (mounted) showError(context, error); } }, child: const Text('Foto bilen tassyklamak')),
-      ]),
-    ));
-    code.dispose(); photo.dispose();
+    await showModalBottomSheet<void>(context: context, isScrollControlled: true, builder: (_) => _DeliveryProofSheet(api: widget.api, token: widget.session.token!, order: order));
+    await _load();
   }
 
   Future<void> _showOrderMap(OrderSummary order) => showModalBottomSheet<void>(
@@ -109,7 +99,7 @@ class _CourierHomePageState extends State<CourierHomePage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(leading: const Padding(padding: EdgeInsets.all(8), child: AppLogo()), title: const Text('Kurýer merkezi'), actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)), IconButton(onPressed: widget.session.logout, icon: const Icon(Icons.logout_rounded))]),
+    appBar: AppBar(leading: const Padding(padding: EdgeInsets.all(8), child: AppLogo()), title: const Text('Kurýer merkezi'), actions: [IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage(session: widget.session, api: widget.api))), icon: const Icon(Icons.manage_accounts_outlined), tooltip: 'Profil'), IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)), IconButton(onPressed: widget.session.logout, icon: const Icon(Icons.logout_rounded))]),
     body: RefreshIndicator(onRefresh: _load, child: _tab == 0 ? _jobsTab(context) : _tab == 1 ? _activeTab(context) : _earningsTab(context)),
     bottomNavigationBar: NavigationBar(selectedIndex: _tab, onDestinationSelected: (index) => setState(() => _tab = index), destinations: [
       const NavigationDestination(icon: Icon(Icons.view_list_outlined), selectedIcon: Icon(Icons.view_list_rounded), label: 'Sargytlar'),
@@ -166,7 +156,7 @@ class _OrderCard extends StatelessWidget {
     Row(children: [Expanded(child: Text(order.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))), Chip(avatar: const Icon(Icons.payments_outlined, size: 16), label: Text('${order.price.toStringAsFixed(0)} TMT'))]),
     if (showStatus) Padding(padding: const EdgeInsets.only(bottom: 12), child: _StatusPill(status: order.status)),
     LocationLine(from: order.pickupAddress, to: order.deliveryAddress), const SizedBox(height: 12),
-    Text('${order.weightKg} kg · #${order.number} · Salgylary kabul etmezden öň görüň', style: TextStyle(color: Colors.blueGrey.shade600)), const SizedBox(height: 14),
+    Row(children: [TransportBadge(transport: order.transport), const SizedBox(width: 8), Text('${transportLabel(order.transport)} · ${order.weightKg} kg · #${order.number}', style: TextStyle(color: Colors.blueGrey.shade600))]), const SizedBox(height: 14),
     if (onMapTap != null) ...[OutlinedButton.icon(onPressed: onMapTap, icon: const Icon(Icons.map_outlined), label: const Text('Kartada görmek'), style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48))), const SizedBox(height: 8)],
     FilledButton.icon(onPressed: action, icon: Icon(showStatus ? Icons.arrow_forward_rounded : Icons.check_circle_outline), style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46)), label: Text(actionLabel)),
   ])));
@@ -176,3 +166,28 @@ class _StatusPill extends StatelessWidget { const _StatusPill({required this.sta
 class _LoadingCard extends StatelessWidget { const _LoadingCard(); @override Widget build(BuildContext context) => const Padding(padding: EdgeInsets.all(36), child: Center(child: CircularProgressIndicator())); }
 class _InfoCard extends StatelessWidget { const _InfoCard({required this.icon, required this.text}); final IconData icon; final String text; @override Widget build(BuildContext context) => Card(child: Padding(padding: const EdgeInsets.all(22), child: Column(children: [Icon(icon, color: const Color(0xFF0F766E), size: 34), const SizedBox(height: 10), Text(text, textAlign: TextAlign.center)]))); }
 class _ErrorCard extends StatelessWidget { const _ErrorCard({required this.message, required this.onRetry}); final String message; final VoidCallback onRetry; @override Widget build(BuildContext context) => Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(children: [Text(message, textAlign: TextAlign.center), TextButton(onPressed: onRetry, child: const Text('Gaýtadan syna'))]))); }
+
+class _DeliveryProofSheet extends StatefulWidget {
+  const _DeliveryProofSheet({required this.api, required this.token, required this.order});
+  final ApiClient api; final String token; final OrderSummary order;
+  @override State<_DeliveryProofSheet> createState() => _DeliveryProofSheetState();
+}
+
+class _DeliveryProofSheetState extends State<_DeliveryProofSheet> {
+  final _code = TextEditingController();
+  XFile? _photo;
+  String? _error;
+  bool _sending = false;
+  @override void dispose() { _code.dispose(); super.dispose(); }
+  Future<void> _otp() async { setState(() { _sending = true; _error = null; }); try { await widget.api.verifyDeliveryOTP(widget.token, widget.order.id, _code.text.trim()); if (mounted) Navigator.pop(context); } catch (_) { if (mounted) setState(() => _error = 'OTP kody nädogry ýa-da möhleti gutardy.'); } finally { if (mounted) setState(() => _sending = false); } }
+  Future<void> _pick() async { final photo = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 85, maxWidth: 1600); if (photo != null && mounted) setState(() { _photo = photo; _error = null; }); }
+  Future<void> _upload() async { if (_photo == null) { setState(() => _error = 'Ilki foto düşüriň.'); return; } setState(() { _sending = true; _error = null; }); try { await widget.api.submitDeliveryPhoto(widget.token, widget.order.id, _photo!.path); if (mounted) Navigator.pop(context); } catch (error) { if (mounted) setState(() => _error = error.toString()); } finally { if (mounted) setState(() => _sending = false); } }
+  @override Widget build(BuildContext context) => SafeArea(child: Padding(padding: EdgeInsets.fromLTRB(20,20,20,20 + MediaQuery.viewInsetsOf(context).bottom), child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    const Text('Eltirişi tassykla', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)), const SizedBox(height: 6), const Text('Alyjydan OTP koduny soraň ýa-da eltişi foto bilen tassyklaň.'), const SizedBox(height: 18),
+    TextField(controller: _code, keyboardType: TextInputType.number, maxLength: 6, decoration: const InputDecoration(labelText: '6 belgili OTP kod')), FilledButton(onPressed: _sending ? null : _otp, child: const Text('OTP bilen tassyklamak')),
+    const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Row(children: [Expanded(child: Divider()), Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('ýa-da')), Expanded(child: Divider())])),
+    OutlinedButton.icon(onPressed: _sending ? null : _pick, icon: const Icon(Icons.camera_alt_outlined), label: Text(_photo == null ? 'Foto düşürmek' : 'Foto saýlandy: ${_photo!.name}')),
+    FilledButton.tonalIcon(onPressed: _sending ? null : _upload, icon: const Icon(Icons.upload_rounded), label: const Text('Foto bilen tassyklamak')),
+    if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w700))),
+  ]))));
+}

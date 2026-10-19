@@ -51,7 +51,7 @@ func (s *Service) Available(ctx context.Context, courierID uuid.UUID) ([]Availab
 		SELECT o.id, o.public_number, o.title, o.weight_kg, o.required_transport_code, o.status_code,
 		       o.pickup_address, ST_Y(o.pickup_location::geometry), ST_X(o.pickup_location::geometry), o.delivery_address,
 		       ST_Y(o.delivery_location::geometry), ST_X(o.delivery_location::geometry),
-		       o.price_amount
+		       o.price_amount, '', ''
 		FROM orders o JOIN courier_profiles cp ON cp.user_id = $1
 		WHERE o.status_code = 'created' AND o.courier_id IS NULL
 		  AND cp.is_available = TRUE
@@ -63,7 +63,7 @@ func (s *Service) Available(ctx context.Context, courierID uuid.UUID) ([]Availab
 	result := make([]AvailableOrder, 0)
 	for rows.Next() {
 		var row AvailableOrder
-		if err := rows.Scan(&row.ID, &row.PublicNumber, &row.Title, &row.WeightKg, &row.RequiredTransportCode, &row.Status, &row.PickupAddress, &row.PickupLatitude, &row.PickupLongitude, &row.DeliveryAddress, &row.DeliveryLatitude, &row.DeliveryLongitude, &row.PriceAmount); err != nil { return nil, err }
+		if err := rows.Scan(&row.ID, &row.PublicNumber, &row.Title, &row.WeightKg, &row.RequiredTransportCode, &row.Status, &row.PickupAddress, &row.PickupLatitude, &row.PickupLongitude, &row.DeliveryAddress, &row.DeliveryLatitude, &row.DeliveryLongitude, &row.PriceAmount, &row.CourierName, &row.CourierTransport); err != nil { return nil, err }
 		result = append(result, row)
 	}
 	return result, rows.Err()
@@ -73,8 +73,11 @@ func (s *Service) Active(ctx context.Context, courierID uuid.UUID) ([]AvailableO
 	const q = `
 		SELECT o.id, o.public_number, o.title, o.weight_kg, o.required_transport_code, o.status_code,
 		       o.pickup_address, ST_Y(o.pickup_location::geometry), ST_X(o.pickup_location::geometry), o.delivery_address,
-		       ST_Y(o.delivery_location::geometry), ST_X(o.delivery_location::geometry), o.price_amount
+		       ST_Y(o.delivery_location::geometry), ST_X(o.delivery_location::geometry), o.price_amount,
+		       u.full_name, cp.transport_type_code
 		FROM orders o
+		JOIN users u ON u.id=o.courier_id
+		JOIN courier_profiles cp ON cp.user_id=o.courier_id
 		WHERE o.courier_id = $1 AND o.status_code IN ('accepted', 'to_pickup', 'delivering')
 		ORDER BY o.accepted_at ASC`
 	return scanOrders(ctx, s.db, q, courierID)
@@ -88,29 +91,47 @@ func (s *Service) Mine(ctx context.Context, userID uuid.UUID, role string) ([]Av
 	query := `
 		SELECT o.id, o.public_number, o.title, o.weight_kg, o.required_transport_code, o.status_code,
 		       o.pickup_address, ST_Y(o.pickup_location::geometry), ST_X(o.pickup_location::geometry), o.delivery_address,
-		       ST_Y(o.delivery_location::geometry), ST_X(o.delivery_location::geometry), o.price_amount
+		       ST_Y(o.delivery_location::geometry), ST_X(o.delivery_location::geometry), o.price_amount,
+		       COALESCE(u.full_name,''), COALESCE(cp.transport_type_code,'')
 		FROM orders o
+		LEFT JOIN users u ON u.id=o.courier_id
+		LEFT JOIN courier_profiles cp ON cp.user_id=o.courier_id
 		WHERE o.` + column + ` = $1
 		ORDER BY o.created_at DESC`
 	return scanOrders(ctx, s.db, query, userID)
 }
 
 func (s *Service) PrepareEscrowAndOTP(ctx context.Context, orderID, clientID uuid.UUID, amount float64) (string, error) {
-	value, err := rand.Int(rand.Reader, big.NewInt(1000000))
-	if err != nil { return "", err }
-	code := fmt.Sprintf("%06d", value.Int64())
-	hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
+	code, hash, err := newDeliveryCode()
 	if err != nil { return "", err }
 	tx, err := s.db.Begin(ctx)
 	if err != nil { return "", err }
 	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx, `INSERT INTO delivery_proofs(order_id, otp_hash, otp_expires_at) VALUES($1,$2,now() + interval '24 hours')`, orderID, string(hash))
+	_, err = tx.Exec(ctx, `INSERT INTO delivery_proofs(order_id, otp_hash, otp_expires_at) VALUES($1,$2,now() + interval '24 hours')`, orderID, hash)
 	if err != nil { return "", err }
 	if amount > 0 {
 		_, err = tx.Exec(ctx, `INSERT INTO escrow_transactions(order_id,client_id,amount,currency,status,provider,held_at) VALUES($1,$2,$3,'TMT','held','development',now())`, orderID, clientID, amount)
 		if err != nil { return "", err }
 	}
 	if err = tx.Commit(ctx); err != nil { return "", err }
+	return code, nil
+}
+
+func newDeliveryCode() (string, string, error) {
+	value, err := rand.Int(rand.Reader, big.NewInt(1000000))
+	if err != nil { return "", "", err }
+	code := fmt.Sprintf("%06d", value.Int64())
+	hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
+	if err != nil { return "", "", err }
+	return code, string(hash), nil
+}
+
+func (s *Service) RefreshOTP(ctx context.Context, orderID, clientID uuid.UUID) (string, error) {
+	code, hash, err := newDeliveryCode()
+	if err != nil { return "", err }
+	command, err := s.db.Exec(ctx, `UPDATE delivery_proofs p SET otp_hash=$3,otp_expires_at=now()+interval '24 hours',otp_verified_at=NULL FROM orders o WHERE p.order_id=$1 AND o.id=p.order_id AND o.client_id=$2 AND o.status_code NOT IN ('delivered','cancelled')`, orderID, clientID, hash)
+	if err != nil { return "", err }
+	if command.RowsAffected() == 0 { return "", ErrUnavailable }
 	return code, nil
 }
 
@@ -153,7 +174,7 @@ func scanOrders(ctx context.Context, db rowQuerier, query string, args ...any) (
 	result := make([]AvailableOrder, 0)
 	for rows.Next() {
 		var row AvailableOrder
-		if err := rows.Scan(&row.ID, &row.PublicNumber, &row.Title, &row.WeightKg, &row.RequiredTransportCode, &row.Status, &row.PickupAddress, &row.PickupLatitude, &row.PickupLongitude, &row.DeliveryAddress, &row.DeliveryLatitude, &row.DeliveryLongitude, &row.PriceAmount); err != nil { return nil, err }
+		if err := rows.Scan(&row.ID, &row.PublicNumber, &row.Title, &row.WeightKg, &row.RequiredTransportCode, &row.Status, &row.PickupAddress, &row.PickupLatitude, &row.PickupLongitude, &row.DeliveryAddress, &row.DeliveryLatitude, &row.DeliveryLongitude, &row.PriceAmount, &row.CourierName, &row.CourierTransport); err != nil { return nil, err }
 		result = append(result, row)
 	}
 	return result, rows.Err()

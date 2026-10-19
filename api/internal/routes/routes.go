@@ -10,6 +10,7 @@ import (
 	"menzil/internal/config"
 	"menzil/internal/middleware"
 	"menzil/internal/orders"
+	"menzil/internal/profile"
 	"menzil/internal/tracking"
 )
 
@@ -20,8 +21,10 @@ func Register(router *gin.Engine, db *pgxpool.Pool, cfg config.Config) {
 	orderHandler := orders.NewHandler(orders.NewService(db))
 	communicationHandler := communication.NewHandler(db)
 	trackingHandler := tracking.NewHandler(db, tracking.NewHub())
+	profileHandler := profile.NewHandler(db)
 
 	router.GET("/healthz", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok", "admin_api": true}) })
+	router.Static("/uploads", "./uploads")
 	v1 := router.Group("/v1")
 	v1.POST("/auth/register", authHandler.Register)
 	v1.POST("/auth/login", authHandler.Login)
@@ -29,9 +32,12 @@ func Register(router *gin.Engine, db *pgxpool.Pool, cfg config.Config) {
 
 	protected := v1.Group("")
 	protected.Use(middleware.Authenticate(tokens))
+	protected.GET("/profile", profileHandler.Get)
+	protected.PUT("/profile", profileHandler.Update)
 	client := protected.Group("")
 	client.Use(middleware.RequireRole("client"))
 	client.POST("/orders", orderHandler.Create)
+	client.POST("/orders/:id/proof/otp/refresh", orderHandler.RefreshOTP)
 	protected.GET("/orders/my", orderHandler.Mine)
 	protected.GET("/orders/:id/messages", communicationHandler.Messages)
 	protected.POST("/orders/:id/messages", communicationHandler.Send)

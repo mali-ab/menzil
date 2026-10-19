@@ -79,8 +79,32 @@ class ApiClient {
   Future<void> verifyDeliveryOTP(String token, String id, String code) =>
       _request('POST', '/courier/orders/$id/proof/otp', token: token, body: {'code': code});
 
-  Future<void> submitDeliveryPhoto(String token, String id, String photoUrl) =>
-      _request('POST', '/courier/orders/$id/proof/photo', token: token, body: {'photo_url': photoUrl});
+  Future<String> refreshDeliveryOTP(String token, String id) async {
+    final json = await _request('POST', '/orders/$id/proof/otp/refresh', token: token);
+    return json['delivery_code'] as String;
+  }
+
+  Future<void> submitDeliveryPhoto(String token, String id, String filePath) async {
+    final request = http.MultipartRequest('POST', _uri('/courier/orders/$id/proof/photo'))
+      ..headers['authorization'] = 'Bearer $token'
+      ..headers['accept'] = 'application/json'
+      ..files.add(await http.MultipartFile.fromPath('photo', filePath));
+    final streamed = await _client.send(request);
+    final response = await http.Response.fromStream(streamed);
+    final decoded = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(decoded['error'] as String? ?? 'Foto ugradylanda säwlik ýüze çykdy');
+    }
+  }
+
+  Future<ProfileData> profile(String token) async =>
+      ProfileData.fromJson(await _request('GET', '/profile', token: token));
+
+  Future<ProfileData> updateProfile(String token, {required String fullName, String? transport}) async =>
+      ProfileData.fromJson(await _request('PUT', '/profile', token: token, body: {
+        'full_name': fullName,
+        if (transport != null) 'transport': transport,
+      }));
 
   Future<List<ChatMessage>> messages(String token, String orderId) async {
     final json = await _request('GET', '/orders/$orderId/messages', token: token);
@@ -140,6 +164,20 @@ class CreatedOrder {
   final String? deliveryCode;
 }
 
+class ProfileData {
+  const ProfileData({required this.fullName, required this.phone, required this.role, required this.transport});
+  factory ProfileData.fromJson(Map<String, dynamic> json) => ProfileData(
+    fullName: json['full_name'] as String? ?? '',
+    phone: json['phone'] as String? ?? '',
+    role: json['role'] as String? ?? '',
+    transport: json['transport'] as String? ?? '',
+  );
+  final String fullName;
+  final String phone;
+  final String role;
+  final String transport;
+}
+
 class ChatMessage {
   const ChatMessage({required this.id, required this.senderID, required this.body, required this.sentAt});
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(id: json['id'] as String, senderID: json['sender_id'] as String, body: json['body'] as String, sentAt: DateTime.parse(json['sent_at'] as String));
@@ -167,6 +205,9 @@ class OrderSummary {
     required this.deliveryLatitude,
     required this.deliveryLongitude,
     required this.price,
+    this.transport = 'car',
+    this.courierName = '',
+    this.courierTransport = '',
   });
 
   factory OrderSummary.fromJson(Map<String, dynamic> json) => OrderSummary(
@@ -182,6 +223,9 @@ class OrderSummary {
         deliveryLatitude: (json['delivery_latitude'] as num).toDouble(),
         deliveryLongitude: (json['delivery_longitude'] as num).toDouble(),
         price: (json['price_amount'] as num).toDouble(),
+        transport: (json['required_transport'] ?? json['transport'] ?? 'car') as String,
+        courierName: json['courier_name'] as String? ?? '',
+        courierTransport: json['courier_transport'] as String? ?? '',
       );
 
   final String id;
@@ -196,4 +240,7 @@ class OrderSummary {
   final double deliveryLatitude;
   final double deliveryLongitude;
   final double price;
+  final String transport;
+  final String courierName;
+  final String courierTransport;
 }

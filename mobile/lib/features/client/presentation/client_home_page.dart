@@ -5,7 +5,9 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/session/session_controller.dart';
 import '../../shared/presentation/app_widgets.dart';
+import '../../shared/presentation/transport_icons.dart';
 import '../../shared/presentation/order_map.dart';
+import '../../shared/presentation/profile_page.dart';
 import '../../tracking/presentation/live_tracking_page.dart';
 
 class ClientHomePage extends StatefulWidget {
@@ -84,7 +86,7 @@ class _ClientHomePageState extends State<ClientHomePage> {
       );
     }
     if (_tab == 2) return const _SimplePage(icon: Icons.support_agent_rounded, title: 'Kömek gerekmi?', text: 'Sargyt, töleg ýa-da eltiş boýunça soraglaryňyz bolsa, goldaw toparyna ýüz tutuň.');
-    return _SimplePage(icon: Icons.person_outline_rounded, title: 'Profil', text: 'Telefon belgiňiz bilen ygtybarly hasap. Hasapdan çykmak üçin ýokarky düwmäni ulanyň.', action: widget.session.logout);
+    return ProfilePage(session: widget.session, api: widget.api, embedded: true);
   }
   void _showHelp(BuildContext context) => setState(() => _tab = 2);
 }
@@ -105,7 +107,14 @@ class _ClientOrderCard extends StatelessWidget {
   const _ClientOrderCard({required this.order, required this.onTap});
   final OrderSummary order; final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => Card(child: ListTile(onTap: onTap, contentPadding: const EdgeInsets.all(16), leading: const CircleAvatar(backgroundColor: Color(0xFFE8F5F1), child: Icon(Icons.local_shipping_outlined, color: Color(0xFF0F766E))), title: Text(order.title, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text('${order.pickupAddress} → ${order.deliveryAddress}', maxLines: 1, overflow: TextOverflow.ellipsis), trailing: const Icon(Icons.chevron_right_rounded)));
+  Widget build(BuildContext context) => Card(child: ListTile(
+        onTap: onTap,
+        contentPadding: const EdgeInsets.all(16),
+        leading: TransportBadge(transport: order.transport),
+        title: Text(order.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        subtitle: Text('${order.pickupAddress} → ${order.deliveryAddress}', maxLines: 1, overflow: TextOverflow.ellipsis),
+        trailing: const Icon(Icons.chevron_right_rounded),
+      ));
 }
 
 class CreateOrderPage extends StatefulWidget {
@@ -157,7 +166,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       final order = OrderSummary(
         id: created.id, number: 0, title: _title.text, weightKg: double.parse(_weight.text), status: 'created',
         pickupAddress: _pickup.text, pickupLatitude: double.parse(_pickupLat.text), pickupLongitude: double.parse(_pickupLng.text),
-        deliveryAddress: _delivery.text, deliveryLatitude: double.parse(_deliveryLat.text), deliveryLongitude: double.parse(_deliveryLng.text), price: _estimatedPrice,
+        deliveryAddress: _delivery.text, deliveryLatitude: double.parse(_deliveryLat.text), deliveryLongitude: double.parse(_deliveryLng.text), price: _estimatedPrice, transport: _transport,
       );
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => LiveTrackingPage(api: widget.api, token: widget.session.token!, orderID: created.id, deliveryCode: created.deliveryCode, order: order)));
     } catch (error) {

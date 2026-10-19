@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/session/session_controller.dart';
+import '../../shared/presentation/transport_icons.dart';
 import '../../shared/presentation/app_widgets.dart';
 
 class AuthPage extends StatefulWidget {
@@ -81,13 +82,7 @@ class _AuthPageState extends State<AuthPage> {
                         DropdownButtonFormField<String>(
                           value: _transport,
                           decoration: const InputDecoration(labelText: 'Ulag görnüşi'),
-                          items: const [
-                            DropdownMenuItem(value: 'foot', child: Text('Pyýada')),
-                            DropdownMenuItem(value: 'bicycle', child: Text('Welosiped')),
-                            DropdownMenuItem(value: 'scooter', child: Text('Skuter')),
-                            DropdownMenuItem(value: 'car', child: Text('Awtoulag')),
-                            DropdownMenuItem(value: 'truck', child: Text('Ýük ulagy')),
-                          ],
+                          items: ['foot','bicycle','scooter','car','truck'].map((value) => DropdownMenuItem(value: value, child: Row(children: [TransportBadge(transport: value), const SizedBox(width: 10), Text(transportLabel(value))]))).toList(),
                           onChanged: (value) => setState(() => _transport = value!),
                         ),
                       ],
