@@ -28,7 +28,11 @@ func main() {
 	router.Use(gin.Logger(), gin.Recovery(), middleware.CORS())
 	routes.Register(router, db, cfg)
 
-	server := &http.Server{Addr: cfg.Address, Handler: router, ReadHeaderTimeout: 5 * time.Second}
+	server := &http.Server{
+    Addr:              "0.0.0.0:8080", 
+    Handler:           router, 
+    ReadHeaderTimeout: 5 * time.Second,
+  }
 	go func() {
 		log.Printf("API %s salgysynda başlady", cfg.Address)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed { log.Fatal(err) }

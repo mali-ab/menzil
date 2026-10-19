@@ -49,7 +49,11 @@ func (h *Handler) StartCall(c *gin.Context) {
 func (h *Handler) authorizedOrder(c *gin.Context) (uuid.UUID,bool) {
 	orderID,err:=uuid.Parse(c.Param("id")); if err != nil { c.JSON(http.StatusBadRequest,gin.H{"error":"Sargyt ID-si nädogry"}); return uuid.Nil,false }
 	principal:=middleware.Current(c); var found uuid.UUID
-	err=h.db.QueryRow(c.Request.Context(),`SELECT id FROM orders WHERE id=$1 AND (client_id=$2 OR courier_id=$2)`,orderID,principal.UserID).Scan(&found)
+	if principal.Role == "admin" {
+		err=h.db.QueryRow(c.Request.Context(),`SELECT id FROM orders WHERE id=$1`,orderID).Scan(&found)
+	} else {
+		err=h.db.QueryRow(c.Request.Context(),`SELECT id FROM orders WHERE id=$1 AND (client_id=$2 OR courier_id=$2)`,orderID,principal.UserID).Scan(&found)
+	}
 	if err==pgx.ErrNoRows { c.JSON(http.StatusForbidden,gin.H{"error":"Rugsat ýok"}); return uuid.Nil,false }
 	if err!=nil { c.JSON(http.StatusInternalServerError,gin.H{"error":"Sargyt barlanylmady"}); return uuid.Nil,false }
 	return orderID,true
