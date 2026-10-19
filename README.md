@@ -126,7 +126,13 @@ make mobile-run-android
 make mobile-build-apk
 ```
 
-`make mobile-build-apk` debug APK-ni `mobile/build/app/outputs/flutter-apk/app-debug.apk` salgysynda döredýär. Android emulýatory üçin `10.0.2.2`, hakyky enjam üçin bolsa kompýuteriň ýerli IP-sini `API_BASE_URL` hökmünde ulanyň.
+`make mobile-build-apk` iki APK döredýär: development üçin `mobile/build/app/outputs/flutter-apk/app-debug.apk` we production üçin optimizirlenen `mobile/build/app/outputs/flutter-apk/app-release.apk`. Hakyky telefon üçin kompýuteriň LAN IP salgysyny beriň (telefon bilen kompýuter şol bir Wi-Fi ulgamynda bolmaly):
+
+```sh
+make mobile-build-apk MOBILE_API_BASE_URL=http://192.168.1.25:8080
+```
+
+`192.168.1.25` ýerine kompýuteriňiziň hakyky lokal IP salgysyny ýazyň. API `0.0.0.0:8080` salgysynda işlemeli we firewall 8080 portuna rugsat bermeli.
 
 Soňky enjam birikdirilmedik Linux development kompýuterinde UI synagy üçin:
 

@@ -8,7 +8,7 @@ class ApiClient {
   factory ApiClient.fromEnvironment() {
     const url = String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://10.0.2.2:8080',
+      defaultValue: 'http://192.168.137.102:8080',
     );
     return ApiClient(Uri.parse(url));
   }
@@ -135,12 +135,17 @@ class ApiClient {
       if (token != null) 'authorization': 'Bearer $token',
     };
     final encodedBody = body == null ? null : jsonEncode(body);
-    final response = switch (method) {
-      'GET' => await _client.get(_uri(path), headers: headers),
-      'POST' => await _client.post(_uri(path), headers: headers, body: encodedBody),
-      'PUT' => await _client.put(_uri(path), headers: headers, body: encodedBody),
-      _ => throw UnsupportedError('HTTP usuly goldanylmaýar: $method'),
-    };
+    late final http.Response response;
+    try {
+      response = switch (method) {
+        'GET' => await _client.get(_uri(path), headers: headers),
+        'POST' => await _client.post(_uri(path), headers: headers, body: encodedBody),
+        'PUT' => await _client.put(_uri(path), headers: headers, body: encodedBody),
+        _ => throw UnsupportedError('HTTP usuly goldanylmaýar: $method'),
+      };
+    } on http.ClientException catch (error) {
+      throw ApiException('API bilen birikme başartmady: $baseUri\n${error.message}');
+    }
     final decoded = response.body.isEmpty
         ? <String, dynamic>{}
         : jsonDecode(response.body) as Map<String, dynamic>;

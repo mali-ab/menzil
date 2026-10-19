@@ -90,11 +90,15 @@ mobile-web-init:
 mobile-run:
 	cd mobile && flutter run -d linux --dart-define=API_BASE_URL=http://localhost:8080
 
+MOBILE_API_BASE_URL ?= http://192.168.137.102:8080
+
 mobile-run-android:
-	cd mobile && flutter run --dart-define=API_BASE_URL=http://localhost:8080
+	cd mobile && flutter run --dart-define=API_BASE_URL=$(MOBILE_API_BASE_URL)
 
 mobile-build-apk:
-	cd mobile && flutter pub get && flutter build apk --debug --dart-define=API_BASE_URL=http://localhost:8080
+	cd mobile && flutter pub get && \
+		flutter build apk --debug --dart-define=API_BASE_URL=$(MOBILE_API_BASE_URL) && \
+		flutter build apk --release --dart-define=API_BASE_URL=$(MOBILE_API_BASE_URL)
 
 mobile-run-web:
 	cd mobile && flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8080
