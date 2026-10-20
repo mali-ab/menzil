@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   AlertTriangle, ArrowRight, Bell, Bike, Box, Car, Check, ChevronDown, ChevronRight,
   Command, LayoutDashboard, LocateFixed,
-  Map, Menu, MessageSquareText, MoreHorizontal, Navigation, PackageCheck,
-  LogOut, Phone, Plus, Search, SlidersHorizontal,
+  Map, Menu, MessageSquareText, Minus, MoreHorizontal, Navigation, PackageCheck,
+  LogOut, Phone, Plus, Power, Search, SlidersHorizontal,
   Footprints, Truck, UsersRound, X, Zap,
 } from 'lucide-react'
 import { type Order, type OrderStatus } from './data'
@@ -81,7 +81,10 @@ function OpenStreetMap({ latitude, longitude, label }: { latitude: number; longi
 
 function CouriersMap({ couriers, language }: { couriers: AdminCourier[]; language: Language }) {
   const mapRef = useRef<HTMLDivElement>(null)
+  const dragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null)
   const [size, setSize] = useState({ width: 420, height: 330 })
+  const [zoomOffset, setZoomOffset] = useState(0)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
   useEffect(() => {
     if (!mapRef.current) return
     const observer = new ResizeObserver(([entry]) => setSize({ width: entry.contentRect.width, height: entry.contentRect.height }))
@@ -104,16 +107,17 @@ function CouriersMap({ couriers, language }: { couriers: AdminCourier[]; languag
     const sin = Math.sin(latitude * Math.PI / 180)
     return { x: (longitude + 180) / 360 * scale, y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * scale }
   }
-  let zoom = 14
+  let fitZoom = 14
   for (let candidate = 18; candidate >= 2; candidate--) {
     const northWest = project(north, west, candidate)
     const southEast = project(south, east, candidate)
-    if (southEast.x - northWest.x <= size.width * 0.86 && southEast.y - northWest.y <= size.height * 0.8) { zoom = candidate; break }
+    if (southEast.x - northWest.x <= size.width * 0.86 && southEast.y - northWest.y <= size.height * 0.8) { fitZoom = candidate; break }
   }
+  const zoom = Math.max(2, Math.min(19, fitZoom + zoomOffset))
   const projectedNorthWest = project(north, west, zoom)
   const projectedSouthEast = project(south, east, zoom)
   const center = { x: (projectedNorthWest.x + projectedSouthEast.x) / 2, y: (projectedNorthWest.y + projectedSouthEast.y) / 2 }
-  const viewport = { left: center.x - size.width / 2, top: center.y - size.height / 2 }
+  const viewport = { left: center.x - size.width / 2 - pan.x, top: center.y - size.height / 2 - pan.y }
   const firstTileX = Math.floor(viewport.left / 256)
   const lastTileX = Math.floor((viewport.left + size.width) / 256)
   const firstTileY = Math.floor(viewport.top / 256)
@@ -123,13 +127,40 @@ function CouriersMap({ couriers, language }: { couriers: AdminCourier[]; languag
   for (let y = firstTileY; y <= lastTileY; y++) for (let x = firstTileX; x <= lastTileX; x++) {
     if (y >= 0 && y < tileCount) tiles.push({ x, y, sourceX: ((x % tileCount) + tileCount) % tileCount })
   }
-  return <div className="courier-osm" ref={mapRef} role="img" aria-label={language === 'tk' ? 'Kurýerleriň kartasy' : 'Карта курьеров'}>
+  const changeZoom = (change: number) => setZoomOffset(current => Math.max(2 - fitZoom, Math.min(19 - fitZoom, current + change)))
+  const startDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest('button,a')) return
+    dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY }
+    event.currentTarget.setPointerCapture(event.pointerId)
+    event.currentTarget.style.cursor = 'grabbing'
+  }
+  const moveDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    const deltaX = event.clientX - drag.x
+    const deltaY = event.clientY - drag.y
+    dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY }
+    setPan(current => ({ x: current.x + deltaX, y: current.y + deltaY }))
+  }
+  const stopDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragRef.current?.pointerId !== event.pointerId) return
+    dragRef.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+    event.currentTarget.style.cursor = 'grab'
+  }
+  const controlStyle = { width: 32, height: 32, border: '1px solid #dedbd4', background: '#fff', color: '#4f46b8', display: 'grid', placeItems: 'center' } as const
+  return <div className="courier-osm" ref={mapRef} role="region" aria-label={language === 'tk' ? 'Kurýerleriň kartasy' : 'Карта курьеров'} style={{ cursor: 'grab', touchAction: 'none', userSelect: 'none' }} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag} onWheel={event => { event.preventDefault(); changeZoom(event.deltaY < 0 ? 1 : -1) }}>
     <div className="osm-tiles">{tiles.map(tile => <img key={`${tile.x}-${tile.y}`} src={`https://tile.openstreetmap.org/${zoom}/${tile.sourceX}/${tile.y}.png`} alt="" draggable={false} style={{ left: tile.x * 256 - viewport.left, top: tile.y * 256 - viewport.top }} />)}</div>
     <div className="courier-markers">{located.map(courier => {
       const point = project(courier.latitude, courier.longitude, zoom)
       return <button key={courier.id} className={`courier-marker ${courier.is_available ? 'available' : ''}`} style={{ left: point.x - viewport.left, top: point.y - viewport.top }} title={`${courier.name} · ${transportName(language, courier.transport)}`} aria-label={courier.name}><span>{courier.name.split(' ').map(part => part[0]).join('').slice(0, 2)}</span><b>{courier.name}</b></button>
     })}</div>
     {!located.length && <div className="map-no-locations">{language === 'tk' ? 'Kurýerleriň ýerleşýän ýeri entek ýok' : 'Местоположения курьеров пока недоступны'}</div>}
+    <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 4, display: 'grid', borderRadius: 9, overflow: 'hidden', boxShadow: '0 3px 12px #0002' }}>
+      <button type="button" style={controlStyle} disabled={zoom >= 19} onClick={() => changeZoom(1)} title={language === 'tk' ? 'Ýakynlaşdyrmak' : 'Приблизить'} aria-label={language === 'tk' ? 'Ýakynlaşdyrmak' : 'Приблизить'}><Plus size={17} /></button>
+      <button type="button" style={{ ...controlStyle, borderTop: 0 }} disabled={zoom <= 2} onClick={() => changeZoom(-1)} title={language === 'tk' ? 'Uzaklaşdyrmak' : 'Отдалить'} aria-label={language === 'tk' ? 'Uzaklaşdyrmak' : 'Отдалить'}><Minus size={17} /></button>
+      <button type="button" style={{ ...controlStyle, borderTop: 0 }} disabled={zoomOffset === 0 && pan.x === 0 && pan.y === 0} onClick={() => { setZoomOffset(0); setPan({ x: 0, y: 0 }) }} title={language === 'tk' ? 'Ähli kurýerleri görkezmek' : 'Показать всех курьеров'} aria-label={language === 'tk' ? 'Ähli kurýerleri görkezmek' : 'Показать всех курьеров'}><LocateFixed size={16} /></button>
+    </div>
     <a className="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap</a>
   </div>
 }
@@ -211,7 +242,7 @@ function DashboardDiagrams({ orders, couriers, language }: { orders: Order[]; co
   </section>
 }
 
-function CouriersPage({ items, query, language, onToggle }: { items: AdminCourier[]; query: string; language: Language; onToggle: (courier: AdminCourier) => void }) {
+function CouriersPage({ items, query, language, onToggle, toggling }: { items: AdminCourier[]; query: string; language: Language; onToggle: (courier: AdminCourier) => void; toggling: Set<string> }) {
   const visible = useMemo(() => {
     const normalized = query.trim().toLowerCase()
     return items.filter(courier => !normalized || `${courier.name} ${courier.transport} ${transportName(language, courier.transport)}`.toLowerCase().includes(normalized))
@@ -229,7 +260,7 @@ function CouriersPage({ items, query, language, onToggle }: { items: AdminCourie
         <div className="courier-cards">{visible.map((courier, index) => <article className="courier-card" key={courier.id}>
           <div className={`avatar ${['mint','blue','orange','violet'][index % 4]}`}>{courier.name.split(' ').map(part => part[0]).join('').slice(0,2)}<i></i></div>
           <div className="courier-card-main"><h3>{courier.name}</h3><p><TransportLabel language={language} value={courier.transport} /> · {language === 'tk' ? 'reýting' : 'рейтинг'} {courier.rating.toFixed(1)}</p><div><span><b>{courier.active_orders}</b> {language === 'tk' ? 'işjeň sargyt' : 'активных заказов'}</span><span className={courier.is_available ? 'available' : 'offline'}>{tr(language, courier.is_available ? 'На линии' : 'Не доступен')}</span></div></div>
-          <button className={courier.is_available ? 'availability active' : 'availability'} onClick={() => onToggle(courier)} aria-label={`${tr(language, 'Изменить доступность')}: ${courier.name}`}><i></i></button>
+          <button className={courier.is_available ? 'availability active' : 'availability'} disabled={toggling.has(courier.id)} onClick={() => onToggle(courier)} title={courier.is_available ? (language === 'tk' ? 'Işden çykarmak' : 'Увести с линии') : (language === 'tk' ? 'Işe çykarmak' : 'Вывести на линию')} aria-label={`${tr(language, 'Изменить доступность')}: ${courier.name}`}><i></i></button>
         </article>)}</div>
         {!visible.length && <div className="empty"><Search size={24} /><b>{language === 'tk' ? 'Kurýer tapylmady' : 'Курьеры не найдены'}</b><span>{language === 'tk' ? 'Gözleg sözüni üýtgediň' : 'Измените поисковый запрос'}</span></div>}
       </div>
@@ -329,9 +360,13 @@ export function App() {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [extraFilters, setExtraFilters] = useState(false)
   const [apiError, setApiError] = useState('')
+  const [togglingCouriers, setTogglingCouriers] = useState<Set<string>>(new Set())
+  const loadGeneration = useRef(0)
 
   async function loadAdminData(currentToken: string) {
+    const generation = ++loadGeneration.current
     const [overviewResult, ordersResult, couriersResult] = await Promise.all([getAdminOverview(currentToken), getAdminOrders(currentToken), getAdminCouriers(currentToken)])
+    if (generation !== loadGeneration.current) return
     setOverview(overviewResult)
     const mappedOrders = ordersResult.items.map(fromApiOrder)
     setOrderItems(mappedOrders)
@@ -409,8 +444,21 @@ export function App() {
     catch (reason) { notify(reason instanceof Error ? reason.message : (language === 'tk' ? 'Kurýer bellenilmedi' : 'Курьер не назначен')) }
   }
   const toggleCourier = async (courier: AdminCourier) => {
-    try { await setAdminCourierAvailability(token, courier.id, !courier.is_available); await loadAdminData(token); notify(language === 'tk' ? 'Kurýeriň elýeterliligi täzelendi' : 'Доступность курьера обновлена') }
-    catch (reason) { notify(reason instanceof Error ? reason.message : (language === 'tk' ? 'Kurýer täzelenmedi' : 'Курьер не обновлён')) }
+    if (togglingCouriers.has(courier.id)) return
+    const nextAvailable = !courier.is_available
+    ++loadGeneration.current
+    setTogglingCouriers(current => new Set(current).add(courier.id))
+    setCourierItems(current => current.map(item => item.id === courier.id ? { ...item, is_available: nextAvailable } : item))
+    try {
+      await setAdminCourierAvailability(token, courier.id, nextAvailable)
+      await loadAdminData(token)
+      notify(language === 'tk' ? (nextAvailable ? 'Kurýer işe çykaryldy' : 'Kurýer işden çykaryldy') : (nextAvailable ? 'Курьер выведен на линию' : 'Курьер снят с линии'))
+    } catch (reason) {
+      setCourierItems(current => current.map(item => item.id === courier.id ? { ...item, is_available: courier.is_available } : item))
+      notify(reason instanceof Error ? reason.message : (language === 'tk' ? 'Kurýer täzelenmedi' : 'Курьер не обновлён'))
+    } finally {
+      setTogglingCouriers(current => { const next = new Set(current); next.delete(courier.id); return next })
+    }
   }
   const callCurrentOrder = async () => {
     if (!current?.apiId) return
@@ -438,7 +486,7 @@ export function App() {
       <div className="content">
         {apiError && <div className="api-banner"><AlertTriangle size={16} /><span>{apiError}</span><button onClick={() => loadAdminData(token)}>{tr(language, 'Повторить')}</button><button onClick={logout}>{tr(language, 'Войти снова')}</button></div>}
         <section className={`page-title ${page === 'Диспетчерская' ? 'dashboard-hero' : ''}`}><div><p>{new Intl.DateTimeFormat(language === 'tk' ? 'tk-TM' : 'ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date()).toUpperCase()}</p><h1>{page === 'Диспетчерская' ? (language === 'tk' ? 'Hoş geldiňiz, dispetçer' : `${greeting}, диспетчер`) : page === 'Заказы' ? tr(language, 'Все заказы') : tr(language, page)}</h1><span>{page === 'Диспетчерская' ? (language === 'tk' ? `${overview.open_orders} işjeň sargyt · ${overview.available_couriers} kurýer eltip bermäge taýýar` : `${overview.open_orders} активных заказов · ${overview.available_couriers} курьеров готовы принять доставку`) : page === 'Заказы' ? `${orderItems.length} ${language === 'tk' ? 'API sargydy' : 'заказов из API'}` : 'Menzil admin'}</span></div><button className="primary" onClick={() => setNewOrderOpen(true)}><Plus size={18} />{tr(language, 'Новый заказ')}</button></section>
-        {page === 'Курьеры' ? <CouriersPage items={courierItems} query={query} language={language} onToggle={toggleCourier} /> : <>{page === 'Диспетчерская' && <><section className="metrics">
+        {page === 'Курьеры' ? <CouriersPage items={courierItems} query={query} language={language} onToggle={toggleCourier} toggling={togglingCouriers} /> : <>{page === 'Диспетчерская' && <><section className="metrics">
           <Metric icon={Zap} value={overview.open_orders} label={tr(language, 'Активные заказы')} delta={`${orderItems.filter(order => order.status === 'Новый').length} ${language === 'tk' ? 'kurýere garaşýar' : 'ждут курьера'}`} tone="indigo" />
           <Metric icon={Truck} value={overview.available_couriers} label={tr(language, 'Курьеры на линии')} delta={`${overview.couriers ? Math.round(overview.available_couriers / overview.couriers * 100) : 0}%`} tone="green" />
           <Metric icon={PackageCheck} value={overview.delivered_today} label={tr(language, 'Доставлено сегодня')} delta="API" tone="sand" />
@@ -453,7 +501,7 @@ export function App() {
           </div>
           {page === 'Диспетчерская' && <aside className="right-column">
             <div className="panel courier-panel"><div className="panel-head"><div><h2>{tr(language, 'Курьеры')}</h2><span>{tr(language, 'Данные API в реальном времени')}</span></div><button className="ghost" onClick={() => window.open('https://www.openstreetmap.org/#map=12/37.94/58.38', '_blank', 'noopener,noreferrer')}>{tr(language, 'На карте')}</button></div>
-              <div className="courier-list">{courierItems.map((courier, index) => <div className="courier" key={courier.id}><div className={`avatar ${['mint','blue','orange','violet'][index % 4]}`}>{courier.name.split(' ').map(part => part[0]).join('').slice(0,2)}<i></i></div><div><b>{courier.name}</b><span><TransportLabel language={language} value={courier.transport} /> · {courier.active_orders} {language === 'tk' ? 'sargyt' : 'заказа'}</span></div><small className={courier.is_available ? '' : 'warn'}>{tr(language, courier.is_available ? 'На линии' : 'Не доступен')}</small><button onClick={() => toggleCourier(courier)} title={tr(language, 'Изменить доступность')}><MoreHorizontal size={17} /></button></div>)}</div>
+              <div className="courier-list">{courierItems.map((courier, index) => <div className="courier" key={courier.id}><div className={`avatar ${['mint','blue','orange','violet'][index % 4]}`}>{courier.name.split(' ').map(part => part[0]).join('').slice(0,2)}<i></i></div><div><b>{courier.name}</b><span><TransportLabel language={language} value={courier.transport} /> · {courier.active_orders} {language === 'tk' ? 'sargyt' : 'заказа'}</span></div><small className={courier.is_available ? '' : 'warn'}>{tr(language, courier.is_available ? 'На линии' : 'Не доступен')}</small><button disabled={togglingCouriers.has(courier.id)} onClick={() => toggleCourier(courier)} title={courier.is_available ? (language === 'tk' ? 'Işden çykarmak' : 'Увести с линии') : (language === 'tk' ? 'Işe çykarmak' : 'Вывести на линию')}><Power size={17} /></button></div>)}</div>
               <button className="wide-ghost" onClick={() => setPage('Курьеры')}>{tr(language, 'Все курьеры')} <ChevronRight size={16} /></button>
             </div>
           </aside>}

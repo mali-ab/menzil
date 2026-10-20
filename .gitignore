@@ -13,3 +13,7 @@
 # OS/editor artifacts
 .DS_Store
 *.swp
+
+# Generated application builds
+web/dist/
+production.env

@@ -134,6 +134,22 @@ make mobile-build-apk MOBILE_API_BASE_URL=http://192.168.1.25:8080
 
 `192.168.1.25` ýerine kompýuteriňiziň hakyky lokal IP salgysyny ýazyň. API `0.0.0.0:8080` salgysynda işlemeli we firewall 8080 portuna rugsat bermeli.
 
+## Production Docker Compose
+
+Production konfigurasiýasy PostgreSQL, migrasiýa runner-i, Go API we Nginx arkaly berilýän web admin-i bir stack hökmünde işletýär. Ilki environment faýlyny dörediň we parollary hökmany üýtgediň:
+
+```sh
+cp production.env.example production.env
+make production-run
+```
+
+Web admin `http://localhost` (ýa-da `PRODUCTION_PORT` bilen görkezilen port) salgysynda açylýar. Nginx `/v1`, `/healthz` we `/uploads` request-lerini API-a geçirýär hem-de tracking WebSocket-laryny goldaýar.
+
+```sh
+make production-logs
+make production-down
+```
+
 Soňky enjam birikdirilmedik Linux development kompýuterinde UI synagy üçin:
 
 ```sh

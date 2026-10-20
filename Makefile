@@ -1,4 +1,4 @@
-.PHONY: api-db api-db-sync-default-password api-migrate api-seed api-deps api-run api-fmt api-test web-run dev-run mobile-init mobile-linux-init mobile-web-init mobile-run mobile-run-android mobile-run-web mobile-build-apk
+.PHONY: api-db api-db-sync-default-password api-migrate api-seed api-deps api-run api-fmt api-test web-run dev-run production-run production-down production-logs mobile-init mobile-linux-init mobile-web-init mobile-run mobile-run-android mobile-run-web mobile-build-apk
 
 api-db:
 	@if command -v pg_isready >/dev/null 2>&1 && pg_isready -q; then \
@@ -77,6 +77,16 @@ dev-run:
 			exit 1; \
 		fi; \
 		$(MAKE) web-run
+
+production-run:
+	@test -f production.env || { echo "Create production.env first: cp production.env.example production.env" >&2; exit 1; }
+	docker compose --env-file production.env -f docker-compose.production.yml up --build -d
+
+production-down:
+	docker compose --env-file production.env -f docker-compose.production.yml down
+
+production-logs:
+	docker compose --env-file production.env -f docker-compose.production.yml logs -f api web
 
 mobile-init:
 	cd mobile && flutter create --platforms=android,ios . && flutter pub get

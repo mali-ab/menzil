@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-menzil}
+      POSTGRES_USER: ${POSTGRES_USER:-menzil}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-menzil}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  migrate:
+    image: postgis/postgis:16-3.4
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-menzil}:${POSTGRES_PASSWORD:-menzil}@postgres:5432/${POSTGRES_DB:-menzil}?sslmode=disable
+    volumes:
+      - ./api/migrations:/migrations:ro
+      - ./api/docker/run-migrations.sh:/usr/local/bin/run-migrations:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/run-migrations"]
+
+  api:
+    build:
+      context: ./api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      APP_ADDRESS: ":8080"
+      DATABASE_URL: postgres://${POSTGRES_USER:-menzil}:${POSTGRES_PASSWORD:-menzil}@postgres:5432/${POSTGRES_DB:-menzil}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in production.env}
+      ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
+      REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-720h}
+      TZ: Asia/Ashgabat
+    volumes:
+      - uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_API_BASE_URL: ""
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${PRODUCTION_PORT:-80}:80"
+
+volumes:
+  postgres_data:
+  uploads:
