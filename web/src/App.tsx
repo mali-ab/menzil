@@ -211,7 +211,7 @@ function LoginPage({ language, onLogin }: { language: Language; onLogin: (token:
     <label>{tr(language, 'Пароль')}<input type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="current-password" required /></label>
     {error && <div className="login-error">{error}</div>}
     <button className="primary" disabled={submitting}>{tr(language, submitting ? 'Подключение…' : 'Войти')}</button>
-    <small>Development: +99360000099 / password</small>
+    {import.meta.env.DEV && <small>Development: +99360000099 / password</small>}
   </form></main>
 }
 

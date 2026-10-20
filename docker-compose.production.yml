@@ -27,6 +27,23 @@ services:
       - ./api/docker/run-migrations.sh:/usr/local/bin/run-migrations:ro
     entrypoint: ["/bin/sh", "/usr/local/bin/run-migrations"]
 
+  admin-cli:
+    image: postgis/postgis:16-3.4
+    profiles: ["tools"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-menzil}:${POSTGRES_PASSWORD:-menzil}@postgres:5432/${POSTGRES_DB:-menzil}?sslmode=disable
+      ADMIN_PHONE: ${ADMIN_PHONE:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_NAME: ${ADMIN_NAME:-}
+    volumes:
+      - ./api/docker/create-admin.sh:/usr/local/bin/create-admin:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/create-admin"]
+
   api:
     build:
       context: ./api

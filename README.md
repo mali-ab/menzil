@@ -145,6 +145,14 @@ make production-run
 
 Web admin `http://localhost` (ýa-da `PRODUCTION_PORT` bilen görkezilen port) salgysynda açylýar. Nginx `/v1`, `/healthz` we `/uploads` request-lerini API-a geçirýär hem-de tracking WebSocket-laryny goldaýar.
 
+Täze production bazasynda development admin ulanyjysy bolmaýar. Ilkinji administratory dörediň (şol telefon öň bar bolsa, bu komanda onuň adyny/parolyny täzeläp, roluny admin edýär):
+
+```sh
+make production-create-admin
+```
+
+Komanda telefon belgisini, ady we paroly interaktiw soraýar; parol terminalda görkezilmeýär.
+
 ```sh
 make production-logs
 make production-down
