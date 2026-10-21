@@ -6,11 +6,17 @@ import '../../../core/network/api_client.dart';
 import 'transport_icons.dart';
 
 class OrderMap extends StatelessWidget {
-  const OrderMap({super.key, required this.orders, this.height = 260, this.navigationMode = false});
+  const OrderMap(
+      {super.key,
+      required this.orders,
+      this.height = 260,
+      this.navigationMode = false,
+      this.courierLocation});
 
   final List<OrderSummary> orders;
   final double height;
   final bool navigationMode;
+  final LatLng? courierLocation;
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +26,7 @@ class OrderMap extends StatelessWidget {
         LatLng(order.pickupLatitude, order.pickupLongitude),
         LatLng(order.deliveryLatitude, order.deliveryLongitude),
       ],
+      if (courierLocation != null) courierLocation!,
     ];
     final center = orders.isEmpty
         ? ashgabat
@@ -44,7 +51,8 @@ class OrderMap extends StatelessWidget {
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                tileProvider: NetworkTileProvider(attemptDecodeOfHttpErrorResponses: false),
+                tileProvider: NetworkTileProvider(
+                    attemptDecodeOfHttpErrorResponses: false),
                 userAgentPackageName: 'com.menzil.mobile',
               ),
               if (orders.isNotEmpty)
@@ -53,8 +61,10 @@ class OrderMap extends StatelessWidget {
                     for (var index = 0; index < orders.length; index++)
                       Polyline(
                         points: [
-                          LatLng(orders[index].pickupLatitude, orders[index].pickupLongitude),
-                          LatLng(orders[index].deliveryLatitude, orders[index].deliveryLongitude),
+                          LatLng(orders[index].pickupLatitude,
+                              orders[index].pickupLongitude),
+                          LatLng(orders[index].deliveryLatitude,
+                              orders[index].deliveryLongitude),
                         ],
                         strokeWidth: navigationMode ? 6 : 4,
                         color: _routeColor(index),
@@ -64,10 +74,19 @@ class OrderMap extends StatelessWidget {
                   ],
                 ),
               MarkerLayer(markers: [
-                if (navigationMode && orders.isNotEmpty) _courierMarker(_courierPoint(orders.first), orders.first.courierTransport.isNotEmpty ? orders.first.courierTransport : orders.first.transport),
+                if (courierLocation != null && orders.isNotEmpty)
+                  _courierMarker(
+                      courierLocation!,
+                      orders.first.courierTransport.isNotEmpty
+                          ? orders.first.courierTransport
+                          : orders.first.transport),
                 for (final order in orders) ...[
-                  _marker(LatLng(order.pickupLatitude, order.pickupLongitude), const Color(0xFF0F766E), Icons.inventory_2_rounded),
-                  _marker(LatLng(order.deliveryLatitude, order.deliveryLongitude), const Color(0xFFF59E0B), Icons.location_on_rounded),
+                  _marker(LatLng(order.pickupLatitude, order.pickupLongitude),
+                      const Color(0xFF0F766E), Icons.inventory_2_rounded),
+                  _marker(
+                      LatLng(order.deliveryLatitude, order.deliveryLongitude),
+                      const Color(0xFFF59E0B),
+                      Icons.location_on_rounded),
                 ],
               ]),
             ],
@@ -76,17 +95,25 @@ class OrderMap extends StatelessWidget {
             top: 12,
             left: 12,
             child: DecoratedBox(
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.94), borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.94),
+                  borderRadius: BorderRadius.circular(12)),
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                child: Text('Alyş  •  Eltiş', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                child: Text('Alyş  •  Eltiş',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
               ),
             ),
           ),
           const Positioned(
             bottom: 5,
             right: 7,
-            child: Text('© OpenStreetMap contributors', style: TextStyle(fontSize: 9, color: Color(0xFF334155), backgroundColor: Color(0xDFFFFFFF))),
+            child: Text('© OpenStreetMap contributors',
+                style: TextStyle(
+                    fontSize: 9,
+                    color: Color(0xFF334155),
+                    backgroundColor: Color(0xDFFFFFFF))),
           ),
         ]),
       ),
@@ -98,7 +125,13 @@ class OrderMap extends StatelessWidget {
         width: 46,
         height: 46,
         child: DecoratedBox(
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3), boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 8)]),
+          decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: const [
+                BoxShadow(color: Color(0x33000000), blurRadius: 8)
+              ]),
           child: Icon(icon, color: Colors.white, size: 21),
         ),
       );
@@ -111,13 +144,30 @@ class OrderMap extends StatelessWidget {
         Color(0xFF9333EA),
       ][index % 5];
 
-  LatLng _courierPoint(OrderSummary order) => LatLng(order.pickupLatitude + (order.deliveryLatitude - order.pickupLatitude) * .32, order.pickupLongitude + (order.deliveryLongitude - order.pickupLongitude) * .32);
-
   Marker _courierMarker(LatLng point, String transport) => Marker(
-    point: point, width: 64, height: 64,
-    child: Stack(alignment: Alignment.center, children: [
-      Container(width: 60, height: 60, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0x6614B8A6), width: 2))),
-      DecoratedBox(decoration: const BoxDecoration(color: Color(0xFFE8F5F1), shape: BoxShape.circle, boxShadow: [BoxShadow(color: Color(0x220F766E), blurRadius: 12)]), child: SizedBox(width: 42, height: 42, child: Icon(transportIcon(transport), color: const Color(0xFF0F766E), size: 23))),
-    ]),
-  );
+        point: point,
+        width: 64,
+        height: 64,
+        child: Stack(alignment: Alignment.center, children: [
+          Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border:
+                      Border.all(color: const Color(0x6614B8A6), width: 2))),
+          DecoratedBox(
+              decoration: const BoxDecoration(
+                  color: Color(0xFFE8F5F1),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(color: Color(0x220F766E), blurRadius: 12)
+                  ]),
+              child: SizedBox(
+                  width: 42,
+                  height: 42,
+                  child: Icon(transportIcon(transport),
+                      color: const Color(0xFF0F766E), size: 23))),
+        ]),
+      );
 }

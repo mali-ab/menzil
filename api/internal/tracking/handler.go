@@ -65,6 +65,11 @@ func (h *Handler) ClientSocket(c *gin.Context) {
 	conn, err := h.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil { return }
 	defer conn.Close()
+	var current Location
+	err = h.db.QueryRow(c.Request.Context(), `SELECT 'location',ST_Y(clc.location::geometry),ST_X(clc.location::geometry),COALESCE(clc.accuracy_m,0),COALESCE(clc.heading_deg,0),COALESCE(clc.speed_mps,0),clc.recorded_at FROM orders o JOIN courier_location_current clc ON clc.courier_id=o.courier_id WHERE o.id=$1`, orderID).Scan(&current.Type, &current.Latitude, &current.Longitude, &current.AccuracyM, &current.HeadingDeg, &current.SpeedMPS, &current.RecordedAt)
+	if err == nil {
+		if err = conn.WriteJSON(current); err != nil { return }
+	}
 	updates, unsubscribe := h.hub.Subscribe(orderID)
 	defer unsubscribe()
 	for update := range updates {
