@@ -100,9 +100,10 @@ class ApiClient {
   Future<ProfileData> profile(String token) async =>
       ProfileData.fromJson(await _request('GET', '/profile', token: token));
 
-  Future<ProfileData> updateProfile(String token, {required String fullName, String? transport}) async =>
+  Future<ProfileData> updateProfile(String token, {required String fullName, String? role, String? transport}) async =>
       ProfileData.fromJson(await _request('PUT', '/profile', token: token, body: {
         'full_name': fullName,
+        if (role != null) 'role': role,
         if (transport != null) 'transport': transport,
       }));
 

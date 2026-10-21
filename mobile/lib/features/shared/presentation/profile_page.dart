@@ -18,6 +18,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final _name = TextEditingController();
   ProfileData? _profile;
+  String _role = 'client';
   String _transport = 'car';
   bool _loading = true;
   bool _saving = false;
@@ -31,7 +32,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final value = await widget.api.profile(widget.session.token!);
       if (!mounted) return;
-      setState(() { _profile = value; _name.text = value.fullName; if (value.transport.isNotEmpty) _transport = value.transport; _loading = false; });
+      setState(() { _profile = value; _name.text = value.fullName; _role = value.role; if (value.transport.isNotEmpty) _transport = value.transport; _loading = false; });
     } catch (error) { if (mounted) { setState(() => _loading = false); showError(context, error); } }
   }
 
@@ -39,8 +40,16 @@ class _ProfilePageState extends State<ProfilePage> {
     if (_name.text.trim().isEmpty) return;
     setState(() => _saving = true);
     try {
-      await widget.api.updateProfile(widget.session.token!, fullName: _name.text.trim(), transport: _profile?.role == 'courier' ? _transport : null);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profil täzelendi')));
+      final roleChanged = _role != _profile?.role;
+      final roleCanChange = _profile?.role == 'client' || _profile?.role == 'courier';
+      await widget.api.updateProfile(widget.session.token!, fullName: _name.text.trim(), role: roleCanChange ? _role : null, transport: _role == 'courier' ? _transport : null);
+      if (!mounted) return;
+      if (roleChanged) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ulanyjy görnüşi täzelendi. Täzeden giriň.')));
+        await widget.session.logout();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profil täzelendi')));
+      }
     } catch (error) { if (mounted) showError(context, error); }
     finally { if (mounted) setState(() => _saving = false); }
   }
@@ -53,7 +62,14 @@ class _ProfilePageState extends State<ProfilePage> {
       TextField(controller: _name, decoration: const InputDecoration(labelText: 'Ady we familiýasy', prefixIcon: Icon(Icons.person_outline))),
       const SizedBox(height: 12),
       InputDecorator(decoration: const InputDecoration(labelText: 'Telefon', prefixIcon: Icon(Icons.phone_outlined)), child: Text(_profile?.phone ?? '')),
-      if (_profile?.role == 'courier') ...[
+      if (_profile?.role == 'client' || _profile?.role == 'courier') ...[
+        const SizedBox(height: 18),
+        DropdownButtonFormField<String>(value: _role, items: const [
+          DropdownMenuItem(value: 'client', child: Text('Müşderi')),
+          DropdownMenuItem(value: 'courier', child: Text('Kurýer')),
+        ], onChanged: _saving ? null : (value) => setState(() => _role = value!), decoration: const InputDecoration(labelText: 'Ulanyjy görnüşi', prefixIcon: Icon(Icons.badge_outlined))),
+      ],
+      if (_role == 'courier') ...[
         const SizedBox(height: 18), const Text('Ulag görnüşi', style: TextStyle(fontWeight: FontWeight.w800)), const SizedBox(height: 8),
         DropdownButtonFormField<String>(value: _transport, items: ['foot','bicycle','scooter','car','truck'].map((value) => DropdownMenuItem(value: value, child: Row(children: [TransportBadge(transport: value), const SizedBox(width: 10), Text(transportLabel(value))]))).toList(), onChanged: (value) => setState(() => _transport = value!), decoration: const InputDecoration()),
       ],
